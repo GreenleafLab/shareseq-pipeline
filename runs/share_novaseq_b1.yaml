@@ -1,0 +1,40 @@
+output_dir: "/scratch/users/bparks/shareseq/share_novaseq_b1"
+
+## Uncomment these lines to do a trial run with only two small test chunks per sublibrary
+# chunk_size: 2_000_000
+# test_chunks: 2
+chunk_size: 20_000_000
+
+genome:
+  bowtie2: /oak/stanford/groups/wjg/share/uPrep/genomes/hg38/indexes/bowtie2/hg38
+  star: /oak/stanford/groups/wjg/share/genomes/star/GRCh38.p7/
+  gene_annotation: /oak/stanford/groups/wjg/bliu/resources/gtf/gencode.v41.annotation.BPfiltered.gtf
+
+# Regular expressions for 1st round barcodes that should be mapped to each sample
+# Must cover all 1st round barcodes 
+# (use a dummy Undetermined sample if some 1st round barcodes are unused)
+samples:
+  sample1_b1:  "A[0-9][0-9]"
+  sample2_b1:  "B[0-9][0-9]"
+  sample3_b1: "C[0-9][0-9]"
+  sample4_b1:  "D[0-9][0-9]"
+  sample5_b1:  "E[0-9][0-9]"
+  sample6_b1:  "F[0-9][0-9]"
+  sample7_b1:  "G[0-9][0-9]"
+  sample8_b1:  "H[0-9][0-9]"
+
+sequencing:
+  220920:
+    type: bcl
+    run_dir: /oak/stanford/groups/wjg/seqruns/220920_A00509_0608_AHNT5JDSX3
+    tile_chunks: 20 # speed up bcl2fastq 
+    ATAC_I2:
+      CL2: CTCTCTAT
+      CL4: AGAGTAGA
+      CL7: AAGGAGTA
+      CL8: CTAAGCCT
+    RNA_I2:
+      CL2: AGGTTGCC
+      CL4: CAGCAACG
+      CL7: GATTCCCA
+      CL8: CGGACTGC
