@@ -71,14 +71,21 @@ barcode_chunks = [
     f"barcodes_{i:02d}" for i in range(1, len(end_barcode_groups) + 1)
 ]
 
-outputs = (
-    ["ATAC/alignment_stats.json", "ATAC/barcode_stats.json"] +
-    ["RNA/alignment_stats.json", "RNA/barcode_stats.json"] +
-    expand('ATAC/{sample}.fragments.tsv.gz', sample=config["samples"].keys()) +
-    expand('RNA/{sample}.{file}.gz', sample=config["samples"].keys(), file=["matrix.mtx", "barcodes.tsv", "features.tsv"]) +
-    expand('{sequencing_path}/fragments.tsv.gz', sequencing_path=utils.get_sequencing_paths("ATAC", config)) +
-    expand('{sequencing_path}/{file}.gz', sequencing_path=utils.get_sequencing_paths("RNA", config), file=["matrix.mtx", "barcodes.tsv", "features.tsv"])
-)
+outputs = []
+if len(utils.get_sequencing_paths("ATAC", config)) > 0:
+    outputs += (
+        ["ATAC/alignment_stats.json", "ATAC/barcode_stats.json"] +
+        expand('ATAC/{sample}.fragments.tsv.gz', sample=config["samples"].keys()) +
+        expand('{sequencing_path}/fragments.tsv.gz', sequencing_path=utils.get_sequencing_paths("ATAC", config))
+    )
+
+if len(utils.get_sequencing_paths("RNA", config)) > 0:
+    outputs += (
+        ["RNA/alignment_stats.json", "RNA/barcode_stats.json"] +
+        expand('RNA/{sample}.{file}.gz', sample=config["samples"].keys(), file=["matrix.mtx", "barcodes.tsv", "features.tsv"]) +
+        expand('{sequencing_path}/{file}.gz', sequencing_path=utils.get_sequencing_paths("RNA", config), file=["matrix.mtx", "barcodes.tsv", "features.tsv"])
+    )
+
 filtered_outputs = []
 for o in outputs:
     if os.path.exists(o):

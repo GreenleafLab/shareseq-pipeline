@@ -29,6 +29,8 @@ def get_sequencing_paths(assay, config, run_types=["bcl"]):
     for run_id, run in config["sequencing"].items():
         assert run["type"] in ["bcl"]
         if run["type"] == "bcl" and "bcl" in run_types:
+            if f"{assay}_I2" not in run:
+                raise Exception(f"Barcodes for '{assay}_I2' not found in config for run '{run_id}'. Please add line '{assay}_I2: {{}}' if the assay type is unused")
             sequencing_paths += [
                 f"{assay}/{run_id}/{sublib_id}" for sublib_id in run[f"{assay}_I2"]
             ]
