@@ -50,7 +50,7 @@ rule bcl2fastq:
         results_dir = temp(directory("bcl2fastq/raw/{sequencing_run}/{tile_chunk}")),
     params:
         script = srcdir("scripts/prep_fastq/run_bcl2fastq.py"),
-        num_tile_chunks = lambda w: config["sequencing"][w.sequencing_run]["tile_chunks"]
+        num_tile_chunks = lambda w: config["sequencing"][w.sequencing_run]["tile_chunks"] if "tile_chunks" in config["sequencing"][w.sequencing_run].keys() else 1
     resources:
         runtime = 4 * 60,
         mem_mb = 32_000,
@@ -112,7 +112,7 @@ def get_tile_chunks(sequencing_path):
     """Generate tile chunk IDs for a sequencing path. Adds padding 0s as needed"""
     run_id = sequencing_path.split("/")[1]
     assert config["sequencing"][run_id]["type"] == "bcl"
-    tile_chunks = config["sequencing"][run_id]["tile_chunks"]
+    tile_chunks = config["sequencing"][run_id]["tile_chunks"] if "tile_chunks" in config["sequencing"][run_id].keys() else 1
     str_len = max(2, len(str(tile_chunks)))
     return [f"{i:0{str_len}d}" for i in range(1, tile_chunks+1)]
 
