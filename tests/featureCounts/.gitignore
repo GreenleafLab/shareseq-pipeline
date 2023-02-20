@@ -1,0 +1,9 @@
+star_chr12
+.ipynb_checkpoints
+aligned.sam.featureCounts
+chr12.fa*
+featureCounts.log
+output.genes*
+testAligned.out.bam
+testLog.*
+testSJ.*
