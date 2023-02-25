@@ -56,6 +56,11 @@ Snakemake-based pipeline for processing SHARE-seq data
    ```yaml
    chunk_size: 20_000_000
    ```
+5. After the run has completed, generate summary plots by running the following 
+   from within the `shareseq-pipeline` directory:
+   ```bash
+   bash plot.sh runs/MY_CONFIG_FILE.yaml
+   ``` 
 
 ---
 
@@ -107,3 +112,16 @@ Builtin unix tools:
 - gzip
 - sort
 - split
+
+### Additional dependencies needed for plotting
+- poppler
+- R
+    - Seurat
+    - ggplot2
+    - patchwork
+    - ggrastr
+    - gridExtra
+    - dplyr
+    - rjson
+    - [BPCells](https://bnprks.github.io/BPCells/index.html)
+
