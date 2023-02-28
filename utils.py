@@ -30,9 +30,9 @@ def get_sequencing_paths(assay, config, run_types=["bcl"]):
         assert run["type"] in ["bcl"]
         if run["type"] == "bcl" and "bcl" in run_types:
             if (f"{assay}_I2" in run.keys()) and run[f"{assay}_I2"]:
-		sequencing_paths += [
-                	f"{assay}/{run_id}/{sublib_id}" for sublib_id in run[f"{assay}_I2"]
-            	]
+                sequencing_paths += [
+                    f"{assay}/{run_id}/{sublib_id}" for sublib_id in run[f"{assay}_I2"]
+                ]
     return sequencing_paths
 
 def fastq_path(sequencing_path, read, config):
