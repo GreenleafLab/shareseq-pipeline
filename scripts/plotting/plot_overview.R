@@ -12,7 +12,7 @@ stopifnot(length(args) == 2)
 
 input_path <- args[1] # path to the shareseq.smk output folder
 output_path <- args[2] # path to save script outputs (plots, tables, objects)
-
+stopifnot(dir.exists(input_path))
 
 ########## functions ############
 plot_barcode_stats <- function(bc.stats.data, output_path){
