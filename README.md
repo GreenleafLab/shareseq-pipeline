@@ -88,7 +88,7 @@ In simple cases, you will have one experiment and one sequencing run. In this ca
 
 In complex cases where experiments are pooled onto different sets of sequencing runs, you may need to make one config file per sequencing run for `prep_fastq.smk` and one config file per experiment for `shareseq.smk`. The figure below illustrates an example where separate config files are created for `shareseq.smk`.
 
-![shareseq-vis](./shareseq-theory-of-operation-vis.jpeg)
+![shareseq-vis](./shareseq-theory-of-operation-vis.jpg)
 
 ---
 
