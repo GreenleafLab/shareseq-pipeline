@@ -17,7 +17,7 @@ output_path <- args[2] # path to save script outputs (plots, tables, objects)
 flag_saveobj <- args[3] # T or F, whether to save the raw RDS Seurat project
 
 stopifnot(dir.exists(paste0(input_path, "/RNA")))
-
+stopifnot(flag_saveobj %in% c("T","F"))
 
 ########## functions ############
 read_data <- function(input_path){
@@ -179,10 +179,10 @@ plot_cluster_composition <- function(proj, output_path){
   # per sample
   g3 <- ggplot(proj@meta.data, aes(x=sample, y=1, fill=seurat_clusters)) + geom_bar(position="fill", stat= "identity") + 
     theme_classic() + theme(text=element_text(family="sans", size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
-    xlab("Sublibrary") + ylab("percentage of cells")
+    xlab("Sample") + ylab("percentage of cells")
   g3b <- ggplot(proj@meta.data, aes(x=sample, y=1, fill=seurat_clusters)) + geom_bar(position="stack", stat= "identity") + 
     theme_classic() + theme(text=element_text(family="sans", size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
-    xlab("Sublibrary") + ylab("# cells")
+    xlab("Sample") + ylab("# cells")
   g4 <- ggplot(proj@meta.data, aes(x=seurat_clusters, y=1, fill=sample)) + geom_bar(position="fill", stat= "identity") + 
     theme_classic() + theme(text=element_text(family="sans", size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
     xlab("cluster") + ylab("percentage of cells")
@@ -215,7 +215,7 @@ plot_knee_sublib(proj, output_path)
 plot_knee_sample(proj, output_path)
 
 # simple filter
-proj <- proj[,(proj$nCount_RNA>1000) & (proj$nFeature_RNA>500) & (proj$percent.mt<0.3)]
+proj <- proj[,(proj$nCount_RNA>1000) & (proj$nFeature_RNA>500) & (proj$percent.mt<30)]
 
 plot_violin_umi_gene(proj, output_path)
 proj <- plot_umap(proj, output_path)
