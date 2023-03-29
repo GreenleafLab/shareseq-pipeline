@@ -433,7 +433,6 @@ rule rna_collapse_umis:
 
 
 def rna_group_barcodes_seqpath(seqpath, grep_pattern):
-    sublibrary_id = seqpath.split("/")[-1]
     return expand(
         f"<(zstd -dc {rules.rna_collapse_umis.output.counts} | " +
         f" grep -E '\+({grep_pattern})\t')",
@@ -450,8 +449,11 @@ def rna_group_barcodes_input(w):
     if barcode_index >= len(end_barcode_groups):
         print("ERROR:", barcode_index, len(end_barcode_groups))
     grep_pattern = b"|".join(end_barcode_groups[barcode_index]).decode()    
-    return reduce(concat,[rna_group_barcodes_seqpath(seqpath, grep_pattern) 
-          for seqpath in utils.get_sequencing_paths("RNA", config, sublib=w.sublibrary)])
+    return reduce(concat,[expand(f"<(zstd -dc {rules.rna_collapse_umis.output.counts} | " +
+                                 f" grep -E '\+({grep_pattern})\t')",
+                                 sequencing_path = seqpath,
+                                 chunk = get_chunks(seqpath)) 
+                                 for seqpath in utils.get_sequencing_paths("RNA", config, sublib=w.sublibrary)])
 
 
 rule rna_group_barcodes:
