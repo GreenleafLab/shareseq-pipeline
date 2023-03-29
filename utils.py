@@ -22,18 +22,32 @@ def string_only_keys(data):
 # Gather Pipeline Inputs
 #####################################
         
-def get_sequencing_paths(assay, config, run_types=["bcl"]):
-    """Get a list of all paths for sublibraries for the current sample"""
+def get_sequencing_paths(assay, config, run_types=["bcl"], sublib=None):
+    """Get a list of all paths for sublibraries for the current assay"""
     assert assay in ["ATAC", "RNA"]
     sequencing_paths = []
     for run_id, run in config["sequencing"].items():
         assert run["type"] in ["bcl"]
         if run["type"] == "bcl" and "bcl" in run_types:
             if (f"{assay}_I2" in run.keys()) and run[f"{assay}_I2"]:
+                whitelist = run[f"{assay}_I2"] if not sublib else [sublib]
                 sequencing_paths += [
-                    f"{assay}/{run_id}/{sublib_id}" for sublib_id in run[f"{assay}_I2"]
+                    f"{assay}/{run_id}/{sublib_id}" for sublib_id in run[f"{assay}_I2"] if sublib_id in whitelist
                 ]
     return sequencing_paths
+
+def get_sublibraries(assay, config, run_types=["bcl"]):
+    """Get a list of all unique sublibraries for the current assay"""
+    assert assay in ["ATAC", "RNA"]
+    sublibraries = []
+    for run_id, run in config["sequencing"].items():
+        assert run["type"] in ["bcl"]
+        if run["type"] == "bcl" and "bcl" in run_types:
+            if (f"{assay}_I2" in run.keys()) and run[f"{assay}_I2"]:
+                sublibraries += [
+                    sublib_id for sublib_id in run[f"{assay}_I2"]
+                ]
+    return list(set(sublibraries))
 
 def fastq_path(sequencing_path, read, config):
     """Take a sublibrary path and return the path to its R1 or R2 fastq"""
