@@ -432,15 +432,6 @@ rule rna_collapse_umis:
            " zstd --fast=1 -q -o {output.counts} "
 
 
-def rna_group_barcodes_seqpath(seqpath, grep_pattern):
-    return expand(
-        f"<(zstd -dc {rules.rna_collapse_umis.output.counts} | " +
-        f" grep -E '\+({grep_pattern})\t')",
-        sequencing_path = seqpath,
-        chunk = get_chunks(seqpath)
-    )
-
-
 def rna_group_barcodes_input(w):
     """Get subshell inputs to decompress and filter inputs by barcode group"""
     if "_" not in w.barcode_chunk:
