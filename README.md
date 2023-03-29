@@ -16,7 +16,12 @@ Snakemake-based pipeline for processing SHARE-seq data
 - Genome annotations:
     - bowtie2 and STAR genome indexes
     - gtf gene annotation
-- A config yaml file ([example](runs/novaseq_b1.yaml))
+    - (optional) We provide a script to automatically download, filter and build genome indices (currently hg38 support only)
+      ```bash
+      cd scripts/references
+      bash prep_genome.sh hg38
+      ```
+- A config yaml file ([example](runs/share_novaseq_b1.yaml))
 
 ### Outputs
 - ATAC fragment file (10x compatible)
@@ -39,7 +44,7 @@ Snakemake-based pipeline for processing SHARE-seq data
 ## Running on Sherlock
 
 0. Install required dependencies (see below)
-1. Adapt the [example](runs/novaseq_b1.yaml) config to your input + output data locations
+1. Adapt the [example](runs/share_novaseq_b1.yaml) config to your input + output data locations
 2. At the top level your config, set:
     ```yaml
     chunk_size: 2_000_000
