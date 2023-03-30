@@ -9,8 +9,6 @@
 import collections
 import os
 import re
-from functools import reduce
-from operator import concat
 
 import utils
 
@@ -33,6 +31,13 @@ def get_chunks(sequencing_path):
         chunk_count = min(chunk_count, config["test_chunks"])
     str_len = max(2, len(str(chunk_count)))
     return [f"{i:0{str_len}d}" for i in range(1, chunk_count+1)]
+
+def expand_sublibrary_chunks(pattern, assay, w):
+    """Generate all sequencing_path/chunks for a given sublibrary """
+    results = []
+    for seqpath in utils.get_sequencing_paths(assay, config, sublib=w.sublibrary):
+        results += expand(pattern, sequencing_path=seqpath, chunk=get_chunks(seqpath))
+    return results
 
 # Confirm that we have read counts for all the input sequences
 for sequencing_path in utils.get_sequencing_paths("ATAC", config) + utils.get_sequencing_paths("RNA", config):
@@ -233,19 +238,13 @@ rule atac_convert_fragments:
 
 rule atac_merge_chunks:
     input: 
-        fragments = lambda w: reduce(concat, [expand(rules.atac_convert_fragments.output, 
-                                              sequencing_path=seqpath, chunk=get_chunks(seqpath))
-                                              for seqpath in utils.get_sequencing_paths("ATAC", config, sublib=w.sublibrary)
-                                              ]),
+        fragments = lambda w: expand_sublibrary_chunks(rules.atac_convert_fragments.output, "ATAC", w), 
         script = rules.build_count_unique.output
     output: 
         fragments = temp('ATAC/sublibraries/{sublibrary}/fragments.tsv.zst'),
     params:
         memory = "4G",
-        fragments_decompress = lambda w: reduce(concat, [expand(f"<(zstd  -dc {rules.atac_convert_fragments.output})", 
-                                                         sequencing_path=seqpath, chunk=get_chunks(seqpath))
-                                                         for seqpath in utils.get_sequencing_paths("ATAC", config, sublib=w.sublibrary)
-                                                         ]),
+        fragments_decompress = lambda w: expand_sublibrary_chunks(f"<(zstd  -dc {rules.atac_convert_fragments.output})", "ATAC", w)
     threads: 5
     resources:
         runtime = 60 * 2
@@ -302,8 +301,8 @@ rule atac_merge_samples:
 rule atac_stats_libraries:
     input: 
         fragments = rules.atac_merge_chunks.output.fragments,
-        bowtie2_log = lambda w: reduce(concat, [expand(rules.atac_bowtie2.log, chunk=get_chunks(seqpath), sequencing_path=seqpath) for seqpath in utils.get_sequencing_paths("ATAC", config, sublib=w.sublibrary)]),
-        barcode_stats = lambda w: reduce(concat, [expand(rules.match_barcodes.output.stats, chunk=get_chunks(seqpath), sequencing_path=seqpath) for seqpath in utils.get_sequencing_paths("ATAC", config, sublib=w.sublibrary)])
+        bowtie2_log = lambda w: expand_sublibrary_chunks(rules.atac_bowtie2.log, "ATAC", w),
+        barcode_stats = lambda w: expand_sublibrary_chunks(rules.match_barcodes.output.stats, "ATAC", w)        
     output: 
         summary = "ATAC/sublibraries/{sublibrary}/alignment_stats.json",
         barcodes = "ATAC/sublibraries/{sublibrary}/barcode_stats.json",
@@ -431,7 +430,6 @@ rule rna_collapse_umis:
            " {input.script} | "
            " zstd --fast=1 -q -o {output.counts} "
 
-
 def rna_group_barcodes_input(w):
     """Get subshell inputs to decompress and filter inputs by barcode group"""
     if "_" not in w.barcode_chunk:
@@ -440,19 +438,13 @@ def rna_group_barcodes_input(w):
     if barcode_index >= len(end_barcode_groups):
         print("ERROR:", barcode_index, len(end_barcode_groups))
     grep_pattern = b"|".join(end_barcode_groups[barcode_index]).decode()    
-    return reduce(concat,[expand(f"<(zstd -dc {rules.rna_collapse_umis.output.counts} | " +
-                                 f" grep -E '\+({grep_pattern})\t')",
-                                 sequencing_path = seqpath,
-                                 chunk = get_chunks(seqpath)) 
-                                 for seqpath in utils.get_sequencing_paths("RNA", config, sublib=w.sublibrary)])
+    return expand_sublibrary_chunks(f"<(zstd -dc {rules.rna_collapse_umis.output.counts} | " +
+                                 f" grep -E '\+({grep_pattern})\t')", "RNA", w)    
 
 
 rule rna_group_barcodes:
     input:
-        counts = lambda w: reduce(concat,[expand(rules.rna_collapse_umis.output.counts, 
-                                          chunk=get_chunks(seqpath), sequencing_path=seqpath)
-                                          for seqpath in utils.get_sequencing_paths("RNA", config, sublib=w.sublibrary)
-                                          ]),
+        counts = lambda w: expand_sublibrary_chunks(rules.rna_collapse_umis.output.counts, "RNA", w), 
         script = rules.build_count_unique.output
     output:
         counts = temp('RNA/sublibraries/{sublibrary}/{barcode_chunk}/counts.tsv.zst')
@@ -518,10 +510,7 @@ rule rna_unique_cells_chunk:
 
 rule rna_unique_cells_sublibrary:
     input:
-        counts = lambda w: reduce(concat, [expand(rules.rna_unique_cells_chunk.output.cells, 
-                                           sequencing_path=seqpath, chunk=get_chunks(seqpath))
-                                           for seqpath in utils.get_sequencing_paths("RNA", config, sublib=w.sublibrary)
-                                           ])
+        counts = lambda w: expand_sublibrary_chunks(rules.rna_unique_cells_chunk.output.cells, "RNA", w) 
     output:
         cells = 'RNA/sublibraries/{sublibrary}/barcodes.tsv.gz'
     shell: "gzip -dc {input.counts} | sort --unique | gzip > {output.cells}"
@@ -640,9 +629,9 @@ rule rna_mtx_sample:
 
 rule rna_stats_libraries:
     input: 
-        barcode_stats = lambda w: reduce(concat, [expand(rules.match_barcodes.output.stats, chunk=get_chunks(seqpath), sequencing_path=seqpath) for seqpath in utils.get_sequencing_paths("RNA", config, sublib=w.sublibrary)]),
-        star_log = lambda w: reduce(concat, [expand(rules.rna_star.log.summary, chunk=get_chunks(seqpath), sequencing_path=seqpath) for seqpath in utils.get_sequencing_paths("RNA", config, sublib=w.sublibrary)]),
-        feature_counts_log = lambda w: reduce(concat, [expand(rules.rna_feature_counts.output.summary, chunk=get_chunks(seqpath), sequencing_path=seqpath) for seqpath in utils.get_sequencing_paths("RNA", config, sublib=w.sublibrary)]),
+        barcode_stats = lambda w: expand_sublibrary_chunks(rules.match_barcodes.output.stats, "RNA", w),    
+        star_log = lambda w: expand_sublibrary_chunks(rules.rna_star.log.summary, "RNA", w),
+        feature_counts_log = lambda w: expand_sublibrary_chunks(rules.rna_feature_counts.output.summary, "RNA", w),
         dedup_log = expand(rules.rna_dedup_count.log, barcode_chunk=barcode_chunks, allow_missing=True)
     output: 
         barcodes = "RNA/sublibraries/{sublibrary}/barcode_stats.json",
