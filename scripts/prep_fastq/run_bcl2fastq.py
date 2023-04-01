@@ -50,6 +50,7 @@ def main():
     parser.add_argument("--threads", type=int, default=4, help="Number of threads to use")
     parser.add_argument("--num_tile_chunks", type=int, default=1, help="Number of chunks to split the tiles into")
     parser.add_argument("--tile_chunk", type=int, default=1, help="Which tile chunk to extract (1-based index)")
+    parser.add_argument("--short_mask", type=int, default=0, help="See bcl2fastq documentation option --mask-short-adapter-reads")
 
     args = parser.parse_args()
 
@@ -92,6 +93,7 @@ def main():
         "--no-lane-splitting",
         "--create-fastq-for-index-reads",
         "--use-bases-mask", get_bases_mask(args.input),
+        "--mask-short-adapter-reads", str(args.short_mask),
         "--output", args.output,
         "--processing-threads", str(args.threads), # Empirically, vast majority of the work is spent in processing threads, so we don't add threads for other purposes
         "--tiles", ",".join(tiles),
