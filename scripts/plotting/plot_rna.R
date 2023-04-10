@@ -67,9 +67,15 @@ read_data <- function(input.dir, use.sublib=FALSE, min.umi=100){
   
   # adding a few attributes
   proj$sublib <- proj$orig.ident
-  tmp <- strsplit(rownames(proj@meta.data), paste0("_",proj$orig.ident,"_"))
-  proj$sample <- unlist(lapply(tmp, function(n){n[1]}))
-  proj$cb <- unlist(lapply(tmp, function(n){n[2]}))
+  if (use.lib){
+    tmp <- strsplit(rownames(proj@meta.data), "_")
+    proj$sample <- unlist(lapply(tmp, function(n){n[1]}))
+    proj$cb <- unlist(lapply(tmp, function(n){n[2]}))
+  } else{
+    tmp <- strsplit(rownames(proj@meta.data), paste0("_",proj$orig.ident,"_"))
+    proj$sample <- unlist(lapply(tmp, function(n){n[1]}))
+    proj$cb <- unlist(lapply(tmp, function(n){n[2]}))
+  }
   mito_gene_id <- rownames(proj)[grepl("^MT-", rownames(proj))]
   proj$percent.mt <- PercentageFeatureSet(proj, features=mito_gene_id)
   return(proj)
