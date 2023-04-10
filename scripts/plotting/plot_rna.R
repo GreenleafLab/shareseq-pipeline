@@ -67,7 +67,7 @@ read_data <- function(input.dir, use.sublib=FALSE, min.umi=100){
   
   # adding a few attributes
   proj$sublib <- proj$orig.ident
-  if (use.lib){
+  if (use.sublib){
     tmp <- strsplit(rownames(proj@meta.data), "_")
     proj$sample <- unlist(lapply(tmp, function(n){n[1]}))
     proj$cb <- unlist(lapply(tmp, function(n){n[2]}))
