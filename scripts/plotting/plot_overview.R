@@ -75,8 +75,8 @@ plot_rna_alignment_stats <- function(input_path, output_path){
     return()
   }
   else{
-    rna.align.stats.list <- list.files(paste0(input_path,"/RNA"), pattern="alignment_stats.json", recursive=T)
-    rna.align.stats.data <- lapply(paste0(input_path,"/RNA/",rna.align.stats.list),function(f){fromJSON(file=f) %>% as.data.frame()}) %>% do.call(rbind, .) %>% t()
+    rna.align.stats.list <- list.files(paste0(input_path,"/RNA/sublibraries"), pattern="alignment_stats.json", recursive=T)
+    rna.align.stats.data <- lapply(paste0(input_path,"/RNA/sublibraries/",rna.align.stats.list),function(f){fromJSON(file=f) %>% as.data.frame()}) %>% do.call(rbind, .) %>% t()
     
     rna.name.list <- unlist(strsplit(paste0("RNA/",rna.align.stats.list), "/alignment_stats.json"))
     rna.name.list <- gsub("/", "_", rna.name.list)
@@ -118,8 +118,8 @@ plot_atac_alignment_stats <- function(input_path, output_path){
     return()
   }
   else{
-    atac.align.stats.list <- list.files(paste0(input_path,"/ATAC"), pattern="alignment_stats.json", recursive=T)
-    atac.align.stats.data <- lapply(paste0(input_path,"/ATAC/",atac.align.stats.list),function(f){fromJSON(file=f) %>% as.data.frame()}) %>% do.call(rbind, .) %>% t()
+    atac.align.stats.list <- list.files(paste0(input_path,"/ATAC/sublibraries"), pattern="alignment_stats.json", recursive=T)
+    atac.align.stats.data <- lapply(paste0(input_path,"/ATAC/sublibraries/",atac.align.stats.list),function(f){fromJSON(file=f) %>% as.data.frame()}) %>% do.call(rbind, .) %>% t()
     
     atac.name.list <- unlist(strsplit(paste0("ATAC/",atac.align.stats.list), "/alignment_stats.json"))
     atac.name.list <- gsub("/", "_", atac.name.list)
@@ -170,10 +170,14 @@ plot_total_reads <- function(rna.align.stats.data, atac.align.stats.data, output
 
 
 ########## main ############
-bc.stats.list <- list.files(input_path, pattern="barcode_stats.json", recursive=T)
-bc.stats.data <-sapply(paste0(input_path,"/",bc.stats.list),function(f){fromJSON(file=f)})
-name.list <- unlist(strsplit(bc.stats.list, "/barcode_stats.json"))
-name.list <- gsub("/", "_", name.list)
+bc.stats.list <- Sys.glob(file.path(input_path, "*/sublibraries/*/barcode_stats.json"))
+bc.stats.data <- sapply(bc.stats.list,function(f){fromJSON(file=f)})
+get.sublib.name <- function (f){
+  basenames <- strsplit(f, "/")[[1]] %>% tail(4)
+  return(paste0(basenames[1], "_", basenames[3]))
+}
+
+name.list <- lapply(bc.stats.list, get.sublib.name) %>% unlist
 colnames(bc.stats.data) <- name.list
 
 if (!dir.exists(output_path)){

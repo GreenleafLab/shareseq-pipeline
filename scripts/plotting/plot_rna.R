@@ -5,6 +5,7 @@ suppressPackageStartupMessages({
   library(patchwork)
   library(ggrastr)
   library(gridExtra)
+  library(BPCells)
 })
 
 
@@ -20,25 +21,40 @@ stopifnot(dir.exists(paste0(input_path, "/RNA")))
 stopifnot(flag_saveobj %in% c("T","F"))
 
 ########## functions ############
-read_data <- function(input_path){
-  sample.list <- list.files(paste0(input_path,"/RNA"), pattern=".matrix.mtx.gz", recursive=F) %>% 
-    strsplit(".matrix.mtx.gz") %>% unlist
-  
-  prefix <- paste0(input_path,"/RNA/")
-  mtx.suffix <- "matrix.mtx.gz"
-  cells.suffix <- "barcodes.tsv.gz"
-  features.suffix <- "features.tsv.gz"
+read_data <- function(input.dir, use.sublib=FALSE, min.umi=100){
+  # read the matrix market files output from https://github.com/GreenleafLab/shareseq-pipeline 
+  # input.dir: output folder from the preprocessing pipeline 
+  # use.sublib: if true, read from RNA/sublibraries instead of RNA/samples
+  # min.umi: filter out cell barcodes with less than min.umi reads
+ 
+  if (use.sublib){
+    sample.list <- list.files(file.path(input.dir,"/RNA/sublibraries/"), pattern="matrix.mtx.gz", recursive=T) %>% 
+      strsplit("/matrix.mtx.gz") %>% unlist
+    
+    prefix <- file.path(input.dir,"/RNA/sublibraries/")
+    mtx.suffix <- "/matrix.mtx.gz"
+    cells.suffix <- "/barcodes.tsv.gz"
+    features.suffix <- "/features.tsv.gz"
+  } else{
+    sample.list <- list.files(file.path(input.dir,"/RNA/samples/"), pattern=".matrix.mtx.gz", recursive=F) %>% 
+      strsplit(".matrix.mtx.gz") %>% unlist
+    
+    prefix <- file.path(input.dir,"/RNA/samples/")
+    mtx.suffix <- ".matrix.mtx.gz"
+    cells.suffix <- ".barcodes.tsv.gz"
+    features.suffix <- ".features.tsv.gz"
+  }
   
   data.list <- lapply(sample.list, function(n){
-    ReadMtx(mtx=paste0(prefix, n, ".", mtx.suffix),
-            cells=paste0(prefix, n, ".", cells.suffix),
-            features=paste0(prefix, n, ".", features.suffix))
+    ReadMtx(mtx=paste0(prefix, n,  mtx.suffix),
+            cells=paste0(prefix, n, cells.suffix),
+            features=paste0(prefix, n, features.suffix))
   })
   
   names(data.list) <- sample.list
   
   obj.list <- lapply(sample.list,function(n){
-    CreateSeuratObject(counts=data.list[[n]], project=n, min.cells=3, min.features=100)
+    CreateSeuratObject(counts=data.list[[n]], project=n, min.cells=0, min.features=min.umi)
   })
   
   
@@ -51,31 +67,34 @@ read_data <- function(input_path){
   
   # adding a few attributes
   proj$sublib <- proj$orig.ident
-  tmp <- strsplit(rownames(proj@meta.data), paste0("_",proj$orig.ident,"_"))
-  proj$sample <- unlist(lapply(tmp, function(n){n[1]}))
-  proj$cb <- unlist(lapply(tmp, function(n){n[2]}))
+  if (use.sublib){
+    tmp <- strsplit(rownames(proj@meta.data), "_")
+    proj$sample <- unlist(lapply(tmp, function(n){n[1]}))
+    proj$cb <- unlist(lapply(tmp, function(n){n[2]}))
+  } else{
+    tmp <- strsplit(rownames(proj@meta.data), paste0("_",proj$orig.ident,"_"))
+    proj$sample <- unlist(lapply(tmp, function(n){n[1]}))
+    proj$cb <- unlist(lapply(tmp, function(n){n[2]}))
+  }
   mito_gene_id <- rownames(proj)[grepl("^MT-", rownames(proj))]
   proj$percent.mt <- PercentageFeatureSet(proj, features=mito_gene_id)
   return(proj)
 }
 
 
-plot_knee_all <- function(proj, output_path){
+plot_knee_all <- function(proj, output_path, umi.cutoff=1000, gene.cutoff=500){
   # overview stats for all cells from all samples
-  g1 <- ggplot(proj@meta.data[order(proj$nCount_RNA,decreasing = TRUE),]) + aes(x=1:dim(proj)[2],y=nCount_RNA) + 
-    rasterise(geom_point(colour="darkblue"),dpi=300) + theme_classic() + scale_x_log10() + scale_y_log10() +
-    xlab("ranked cell barcodes") + ylab("UMI counts") + ggtitle("UMI counts vs cell barcodes") +
-    theme(plot.title = element_text(hjust = 0.5))
+  g1 <- plot_read_count_knee(proj$nCount_RNA, cutoff = umi.cutoff) + 
+    ggtitle("nUMI vs cell barcodes, all") + ylab("nUMI") + geom_point(color="darkblue")
+  g2 <- plot_read_count_knee(proj$nFeature_RNA, cutoff = gene.cutoff) + 
+    ggtitle("nGene vs cell barcodes, all") + ylab("nGene") + geom_point(color="darkblue")
   
-  g2 <- ggplot(proj@meta.data[order(proj$nFeature_RNA,decreasing = TRUE),]) + aes(x=1:dim(proj)[2],y=nFeature_RNA) + 
-    rasterise(geom_point(colour="darkblue"),dpi=300) + theme_classic() + scale_x_log10() + scale_y_log10() +
-    xlab("ranked cell barcodes") + ylab("gene counts") + ggtitle("Gene counts vs cell barcodes") +
-    theme(plot.title = element_text(hjust = 0.5))
-  
-  g3_base <- ggplot(proj@meta.data[order(proj$nCount_RNA,decreasing = TRUE),]) + aes(x=nCount_RNA,y=nFeature_RNA) + 
-    rasterise(geom_point(colour="darkblue"),dpi=300) + theme_classic() + 
-    xlab("UMI counts") + ylab("gene counts") + ggtitle("Detected gene counts vs UMI counts") +
-    theme(plot.title = element_text(hjust = 0.5))
+  downsample.idx <- plot_read_count_knee(proj$nCount_RNA, return_data=TRUE)
+  g3_base <- ggplot(proj@meta.data[names(downsample.idx$data$reads),]) + aes(x=nCount_RNA,y=nFeature_RNA) + 
+    geom_point(colour="darkblue") + theme_classic() + 
+    xlab("nUMI") + ylab("nGene") + ggtitle("nGene vs nUMI, all") + 
+    geom_vline(xintercept=umi.cutoff, linetype="dashed") + geom_hline(yintercept=gene.cutoff, linetype="dashed") +
+    scale_x_log10() + scale_y_log10() + annotation_logticks(sides="bl") 
   
   cell_count_text_a <- paste(paste0("Number of Cells that detected > 0 UMIs:       ",sum(proj$nCount_RNA > 0)), 
                              paste0("Number of Cells that detected > 10 UMIs:     ",sum(proj$nCount_RNA > 10)),
@@ -98,42 +117,34 @@ plot_knee_all <- function(proj, output_path){
 }
 
 
-plot_knee_sublib <- function(proj, output_path){
+plot_knee_sublib <- function(proj, output_path, umi.cutoff=1000, gene.cutoff=500){
   # UMI and gene knee plots for each sublibrary
   sublib.list <- unique(proj$sublib)
   
   pdf(paste0(output_path, "/rna_kneeplots_persublib.pdf"),width=10,height=5)
   for (sample in sublib.list){
     subproj <- proj@meta.data[proj$sublib == sample,]
-    g1 <- ggplot(subproj[order(subproj$nCount_RNA,decreasing = TRUE),]) + aes(x=1:dim(subproj)[1],y=nCount_RNA) + 
-      rasterise(geom_point(colour="darkblue"),dpi=300) + theme_classic() + scale_x_log10() + scale_y_log10() +
-      xlab("ranked cell barcodes") + ylab("UMI counts") + ggtitle(paste0("UMI counts vs cell barcodes, ", sample)) +
-      theme(plot.title = element_text(hjust = 0.5))
-    g2 <- ggplot(subproj[order(subproj$nFeature_RNA,decreasing = TRUE),]) + aes(x=1:dim(subproj)[1],y=nFeature_RNA) + 
-      rasterise(geom_point(colour="darkblue"),dpi=300) + theme_classic() + scale_x_log10() + scale_y_log10() +
-      xlab("ranked cell barcodes") + ylab("gene counts") + ggtitle(paste0("Gene counts vs cell barcodes, ", sample)) +
-      theme(plot.title = element_text(hjust = 0.5))
+    g1 <- plot_read_count_knee(subproj$nCount_RNA, cutoff = umi.cutoff) + 
+      ggtitle(paste0("nUMI vs cell barcodes, ", sample)) + ylab("nUMI") + geom_point(color="darkblue")
+    g2 <- plot_read_count_knee(subproj$nFeature_RNA, cutoff = gene.cutoff) + 
+      ggtitle(paste0("nGene vs cell barcodes, ", sample)) + ylab("nGene") + geom_point(color="darkblue")
     print(g1+g2)
   }
   invisible(dev.off())
 }
 
 
-plot_knee_sample <- function(proj, output_path){
+plot_knee_sample <- function(proj, output_path, umi.cutoff=1000, gene.cutoff=500){
   # UMI and gene knee plots for each sample
   sample.list <- unique(proj$sample)
   
   pdf(paste0(output_path, "/rna_kneeplots_persample.pdf"),width=10,height=5)
   for (sample in sample.list){
     subproj <- proj@meta.data[proj$sample == sample,]
-    g1 <- ggplot(subproj[order(subproj$nCount_RNA,decreasing = TRUE),]) + aes(x=1:dim(subproj)[1],y=nCount_RNA) + 
-      rasterise(geom_point(colour="darkblue"),dpi=300) + theme_classic() + scale_x_log10() + scale_y_log10() +
-      xlab("ranked cell barcodes") + ylab("UMI counts") + ggtitle(paste0("UMI counts vs cell barcodes, ", sample)) +
-      theme(plot.title = element_text(hjust = 0.5))
-    g2 <- ggplot(subproj[order(subproj$nFeature_RNA,decreasing = TRUE),]) + aes(x=1:dim(subproj)[1],y=nFeature_RNA) + 
-      rasterise(geom_point(colour="darkblue"),dpi=300) + theme_classic() + scale_x_log10() + scale_y_log10() +
-      xlab("ranked cell barcodes") + ylab("gene counts") + ggtitle(paste0("Gene counts vs cell barcodes, ", sample)) +
-      theme(plot.title = element_text(hjust = 0.5))
+    g1 <- plot_read_count_knee(subproj$nCount_RNA, cutoff = umi.cutoff) + 
+      ggtitle(paste0("nUMI vs cell barcodes, ", sample)) + ylab("nUMI") + geom_point(color="darkblue")
+    g2 <- plot_read_count_knee(subproj$nFeature_RNA, cutoff = gene.cutoff) + 
+      ggtitle(paste0("nGene vs cell barcodes, ", sample)) + ylab("nGene") + geom_point(color="darkblue")
     print(g1+g2)
   }
   invisible(dev.off())
@@ -150,7 +161,7 @@ plot_violin_umi_gene <- function(proj, output_path){
 
 
 plot_umap <- function(proj, output_path){
-  proj <- SCTransform(proj, vst.flavor = "v2") %>% RunPCA %>% FindNeighbors(dims = 1:50) %>%
+  proj <- NormalizeData(proj) %>% FindVariableFeatures(nfeatures=2000) %>% ScaleData %>% RunPCA %>% FindNeighbors(dims = 1:50) %>%
     FindClusters(resolution = 0.2) %>% RunUMAP(dims = 1:50)
   
   p <- DimPlot(proj, group.by="seurat_clusters") +  DimPlot(proj, group.by="sample") +
@@ -201,15 +212,20 @@ plot_cluster_composition <- function(proj, output_path){
 
 
 ########## main ############
+message("reading data")
 proj <- read_data(input_path)
+#proj <- read_data(input_path, use.sublib=T) # use this if only want sublibrary level qc, no sample info
 
 if (flag_saveobj == "T"){
+  message("saving raw object")
   saveRDS(proj, file=paste0(output_path, "/RNA_proj_raw.rds"))
 }
 
 if (!dir.exists(output_path)){
   dir.create(output_path, recursive = TRUE, showWarnings = FALSE)
 }
+
+message("plotting knee plots")
 plot_knee_all(proj, output_path)
 plot_knee_sublib(proj, output_path)
 plot_knee_sample(proj, output_path)
@@ -218,9 +234,12 @@ plot_knee_sample(proj, output_path)
 proj <- proj[,(proj$nCount_RNA>1000) & (proj$nFeature_RNA>500) & (proj$percent.mt<30)]
 
 plot_violin_umi_gene(proj, output_path)
+
+message("plotting umap")
 proj <- plot_umap(proj, output_path)
 plot_cluster_composition(proj, output_path)
 
 if (flag_saveobj == "T"){
+  message("saving clustered object")
   saveRDS(proj, file=paste0(output_path, "/RNA_proj_clustered.rds"))
 }
