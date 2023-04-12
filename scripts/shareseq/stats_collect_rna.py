@@ -102,14 +102,7 @@ star_log_template = r"""Number of input reads \|	(?P<total_reads>\d+)
         Number of reads mapped to multiple loci \|	(?P<total_multimap>\d+)
              % of reads mapped to multiple loci \|	{percentage_regex}
         Number of reads mapped to too many loci \|	(?P<total_multimap_toomany>\d+)
-             % of reads mapped to too many loci \|	{percentage_regex}
-                                  UNMAPPED READS:
-       % of reads unmapped: too many mismatches \|	{percentage_regex}
-                 % of reads unmapped: too short \|	{percentage_regex}
-                     % of reads unmapped: other \|	{percentage_regex}
-                                  CHIMERIC READS:
-                       Number of chimeric reads \|	\d+
-                            % of chimeric reads \|	{percentage_regex}""".format(percentage_regex=percentage_regex)
+             % of reads mapped to too many loci \|	{percentage_regex}""".format(percentage_regex=percentage_regex)
 
 def parse_star_log(path):
     output_groups = ["total_reads", "unique_map_reads", "total_multimap", "total_multimap_toomany",]

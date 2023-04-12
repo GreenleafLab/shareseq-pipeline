@@ -8,6 +8,11 @@ import utils
 
 workdir: config["output_dir"]
 
+# global singularity container to use
+# only set if container given in config and is not none
+if "singularity" in config.keys() and config["singularity"]: 
+    singularity: config["singularity"]
+
 wildcard_constraints:
     sequencing_path = "(ATAC|RNA)/([^/]+/)?[^/]+", # Sequencing path is 2-3 folders
     tile_chunk = "[0-9]+"

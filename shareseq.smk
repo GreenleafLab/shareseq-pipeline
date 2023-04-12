@@ -14,6 +14,11 @@ import utils
 
 workdir: config["output_dir"]
 
+# global singularity container to use
+# only set if container given in config and is not none
+if "singularity" in config.keys() and config["singularity"]: 
+    singularity: config["singularity"] 
+    
 #############################
 ### Config parsing and metadata helpers
 #############################
@@ -391,7 +396,6 @@ rule rna_star:
            " --alignSJoverhangMin 8 "
            " --alignSJDBoverhangMin 1 " 
            " --sjdbScore 1 "          
-           " --limitIObufferSize 400000000 "
            " --limitOutSJcollapsed 5000000 "
         
 # Add genome annotation

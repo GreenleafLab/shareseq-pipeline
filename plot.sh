@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-smk_output=$(grep 'output_dir:' $1 | cut -d: -f2 | cut -d\" -f2)
+smk_output=$(grep -v ^\# $1 | grep 'output_dir:' | cut -d: -f2 | cut -d\" -f2)
 
 # overview
 Rscript scripts/plotting/plot_overview.R $smk_output plots/overview/
