@@ -97,7 +97,7 @@ Snakemake-based pipeline for processing SHARE-seq data
 6. After the run has completed, generate summary plots by running the following
    from within the `shareseq-pipeline` directory:
    ```bash
-   sbatch -p wjg,sfgf,biochem --mem-per-cpu=64g --job-name=plot --wrap "singularity exec --cleanenv /YOUR/CONTAINERS/DIR/shareseq_latest.sif plot.sh runs/MY_CONFIG_FILE.yaml"
+   sbatch -p wjg,sfgf,biochem --mem-per-cpu=64g --job-name=plot --wrap "singularity exec --cleanenv /YOUR/CONTAINERS/DIR/shareseq_latest.sif ./plot.sh runs/MY_CONFIG_FILE.yaml"
    ```
 
 ---
