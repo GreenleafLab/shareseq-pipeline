@@ -1,17 +1,22 @@
-output_dir: "/scratch/users/bparks/shareseq/share_novaseq_b1"
+output_dir: "/path/to/output/folder/"
 
 ## Uncomment these lines to do a trial run with only two small test chunks per sublibrary
 # chunk_size: 2_000_000
 # test_chunks: 2
 chunk_size: 20_000_000
 
+## Check the genomes
+# importantly, make sure the STAR index is compatible with your STAR version
 genome:
-  bowtie2: /oak/stanford/groups/wjg/share/uPrep/genomes/hg38/indexes/bowtie2/hg38
-  star: /oak/stanford/groups/wjg/share/genomes/star/GRCh38.p7/
-  gene_annotation: /oak/stanford/groups/wjg/bliu/resources/gtf/gencode.v41.annotation.BPfiltered.gtf
+  bowtie2: /oak/stanford/groups/wjg/bliu/resources/shareseq_references/hg38/bowtie2/hg38
+  star: /oak/stanford/groups/wjg/bliu/resources/shareseq_references/hg38/star # this is for STAR 2.7+ 
+  gene_annotation: /oak/stanford/groups/wjg/bliu/resources/shareseq_references/hg38/gencode.v41.annotation.filtered.gtf
 
-# Regular expressions for 1st round barcodes that should be mapped to each sample
-# Must cover all 1st round barcodes 
+## Uncomment the line below to run in a container
+# singularity: "/oak/stanford/groups/wjg/bliu/containers/shareseq_latest.sif"
+
+## Regular expressions for 1st round barcodes that should be mapped to each sample
+# Must cover all 1st round barcodes, can use resources like regex101.com to check syntax 
 # (use a dummy Undetermined sample if some 1st round barcodes are unused)
 samples:
   sample1_b1:  "A[0-9][0-9]"

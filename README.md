@@ -7,7 +7,9 @@ Snakemake-based pipeline for processing SHARE-seq data
     - Processes a Novaseq run in under 4 hours in our tests on Sherlock
 - Resume cleanly after interruptions
 - Demultiplex individual samples barcoded using first round cell barcode
-- Merge sequencing data from multiple sequencing runs of the same experiment (TODO)
+- Merge sequencing data from multiple sequencing runs of the same experiment
+- Can be run in a pre-built [container](https://hub.docker.com/r/bettybliu/shareseq)
+    - [Dockerfile](scripts/Dockerfile) provided for users to build custom containers if needed 
 
 ## Getting started
 ### Inputs
@@ -25,21 +27,21 @@ Snakemake-based pipeline for processing SHARE-seq data
 
 ### Outputs
 - ATAC fragment file (10x compatible)
-    - `ATAC/{sample}.fragments.tsv.gz`
+    - `ATAC/samples/{sample}.fragments.tsv.gz`
 - RNA mtx file (10x compatible)
-    - `RNA/{sample}.matrix.mtx.gz`
-    - `RNA/{sample}.barcodes.tsv.gz`
-    - `RNA/{sample}.features.tsv.gz`
+    - `RNA/samples/{sample}.matrix.mtx.gz`
+    - `RNA/samples/{sample}.barcodes.tsv.gz`
+    - `RNA/samples/{sample}.features.tsv.gz`
 - Secondary outputs:
     - Stats on alignment rates
-        - `ATAC/alignment_stats.json`
-        - `RNA/alignment_stats.json`
+        - `ATAC/samples/alignment_stats.json`
+        - `RNA/samples/alignment_stats.json`
     - Stats on barcode matching rates
-        - `ATAC/barcode_stats.json`
-        - `RNA/alignment_stats.json`
+        - `ATAC/samples/barcode_stats.json`
+        - `RNA/samples/barcode_stats.json`
     - Per-sublibrary fragment and matrix files:
-        - `ATAC/{sequencing_run}/{sublibrary}/fragments.tsv.gz`
-        - `RNA/{sequencing_run}/{sublibrary}/matrix.mtx.gz`
+        - `ATAC/sublibraries/{sublibrary}/fragments.tsv.gz`
+        - `RNA/sublibraries/{sublibrary}/matrix.mtx.gz`
 
 ## Running on Sherlock
 
@@ -52,7 +54,7 @@ Snakemake-based pipeline for processing SHARE-seq data
     ```
 3. From within the `shareseq-pipeline` directory, run:
    ```bash
-   sbatch -p wjg,sfgf,biochem --time=6:00:00 run.sh runs/MY_CONFIG_FILE.yaml
+   sbatch -p wjg,sfgf,biochem run.sh runs/MY_CONFIG_FILE.yaml
    ```
    Set the `-p` argument to your partition names, and set the path to your config file
    appropriately.
@@ -64,8 +66,39 @@ Snakemake-based pipeline for processing SHARE-seq data
 5. After the run has completed, generate summary plots by running the following 
    from within the `shareseq-pipeline` directory:
    ```bash
-   bash plot.sh runs/MY_CONFIG_FILE.yaml
+   sbatch -p wjg,sfgf,biochem --mem-per-cpu=64g plot.sh runs/MY_CONFIG_FILE.yaml
    ``` 
+
+## Running on Sherlock with container
+
+0. Install `singularity` and `snakemake` 
+1. Build the container image file by running:
+   ```
+   singularity pull /YOUR/CONTAINERS/DIR/shareseq_latest.sif docker://bettybliu/shareseq:latest
+   ```
+2. Adapt the [example](runs/share_novaseq_b1.yaml) config to your input + output data locations,
+   uncomment the singularity line and modify it to `singularity: "/YOUR/CONTAINERS/DIR/shareseq_latest.sif"`
+3. At the top level your config, set:
+    ```yaml
+    chunk_size: 2_000_000
+    test_chunks: 2
+    ```
+4. From within the `shareseq-pipeline` directory, run:
+   ```bash
+   sbatch -p wjg,sfgf,biochem run.sh runs/MY_CONFIG_FILE.yaml
+   ```
+   Set the `-p` argument to your partition names, and set the path to your config file
+   appropriately.
+5. After that runs successfully, delete the test outputs and do a full-scale run by
+   setting a larger chunk size and removing `test_chunks` from the config.
+   ```yaml
+   chunk_size: 20_000_000
+   ```
+6. After the run has completed, generate summary plots by running the following
+   from within the `shareseq-pipeline` directory:
+   ```bash
+   sbatch -p wjg,sfgf,biochem --mem-per-cpu=64g --job-name=plot --wrap "singularity exec --cleanenv /YOUR/CONTAINERS/DIR/shareseq_latest.sif plot.sh runs/MY_CONFIG_FILE.yaml"
+   ```
 
 ---
 
@@ -110,7 +143,7 @@ In complex cases where experiments are pooled onto different sets of sequencing 
 - snakemake
 - tabix
 - umi_tools
-- zstandard
+- zstd
 
 Builtin unix tools:
 - awk

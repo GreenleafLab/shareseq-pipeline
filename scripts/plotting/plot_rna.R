@@ -153,9 +153,9 @@ plot_knee_sample <- function(proj, output_path, umi.cutoff=1000, gene.cutoff=500
 
 plot_violin_umi_gene <- function(proj, output_path){
   median_tbl <- proj@meta.data %>% group_by(sublib) %>% 
-        summarise(median_umi=median(nCount_RNA), median_gene=median(nFeature_RNA))
-  p1 <- VlnPlot(proj, features = c("nCount_RNA","nFeature_RNA","percent.mt"), pt.size=0, group.by="sublib")
-  p <- p1 + tableGrob(median_tbl, rows = NULL)
+        summarise(median_umi=median(nCount_RNA), median_gene=median(nFeature_RNA), cells_passfilter=n())
+  p1 <- VlnPlot(proj, features = c("nCount_RNA","nFeature_RNA","percent.mt"), pt.size=0, group.by="sublib", log=T)
+  p <- p1 / tableGrob(median_tbl, rows = NULL)
   ggsave(plot=p, file=paste0(output_path,"/rna_umi_gene_violin.pdf"), dpi=300, width=10, height=8)
 }
 
