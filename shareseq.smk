@@ -98,15 +98,8 @@ if len(utils.get_sequencing_paths("RNA", config)) > 0:
         expand('RNA/sublibraries/{sublibrary}/{file}.gz', sublibrary=utils.get_sublibraries("RNA", config), file=["matrix.mtx", "barcodes.tsv", "features.tsv"])
     )
 
-filtered_outputs = []
-for o in outputs:
-    if os.path.exists(o):
-        print(f"Skipping existing output: {o}", file=sys.stderr)
-    else:
-        filtered_outputs.append(o)
-
 rule all:
-    input: filtered_outputs 
+    input: outputs 
 
 #############################
 ### Build C-based scripts

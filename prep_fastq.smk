@@ -23,18 +23,11 @@ outputs = (
     expand("{sequencing_path}/read_count.txt", sequencing_path=utils.get_sequencing_paths("ATAC", config) + utils.get_sequencing_paths("RNA", config)) + 
     expand("bcl2fastq/{sequencing_path}_{read}.fastq.zst", sequencing_path=utils.get_sequencing_paths("ATAC", config, run_types=["bcl"]) + utils.get_sequencing_paths("RNA", config, run_types="bcl"), read=["R1", "R2"])
 )
-filtered_outputs = []
-for o in outputs:
-    if os.path.exists(o):
-        print(f"Skipping existing output: {o}", file=sys.stderr)
-    else:
-        filtered_outputs.append(o)
-
 
 
 localrules: all
 rule all:
-    input: filtered_outputs
+    input: outputs
         
 
 #############################
