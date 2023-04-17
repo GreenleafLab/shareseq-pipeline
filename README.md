@@ -68,7 +68,14 @@ Snakemake-based pipeline for processing SHARE-seq data
    ```bash
    sbatch -p wjg,sfgf,biochem --mem-per-cpu=64g plot.sh runs/MY_CONFIG_FILE.yaml
    ``` 
-
+6. (optional) To delete the intermediate outputs after a run, run the following:
+   ```bash
+   snakemake --profile=$(pwd)/profile -s prep_fastq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-out --config filter_dag=false
+   snakemake --profile=$(pwd)/profile -s shareseq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-out --config filter_dag=false
+   ```
+   Note that this step is not needed if you remove all the `--notemp` flags from `run.sh` before running step 3. 
+   Snakemake will delete the intermediate outputs by default as it runs without the `--notemp` flag.
+   
 ## Running on Sherlock with container
 
 0. Install `singularity` and `snakemake` 
@@ -99,6 +106,13 @@ Snakemake-based pipeline for processing SHARE-seq data
    ```bash
    sbatch -p wjg,sfgf,biochem --mem-per-cpu=64g --job-name=plot --wrap "singularity exec --cleanenv /YOUR/CONTAINERS/DIR/shareseq_latest.sif ./plot.sh runs/MY_CONFIG_FILE.yaml"
    ```
+7. (optional) To delete the intermediate outputs after a run, run the following:
+   ```bash
+   snakemake --profile=$(pwd)/profile -s prep_fastq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-out --config filter_dag=false
+   snakemake --profile=$(pwd)/profile -s shareseq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-out --config filter_dag=false
+   ```
+   Note that this step is not needed if you remove all the `--notemp` flags from `run.sh` before running step 3.
+   Snakemake will delete the intermediate outputs by default as it runs without the `--notemp` flag.
 
 ---
 
