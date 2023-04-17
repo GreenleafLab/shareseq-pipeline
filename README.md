@@ -70,8 +70,8 @@ Snakemake-based pipeline for processing SHARE-seq data
    ``` 
 6. (optional) To delete the intermediate outputs after a run, run the following:
    ```bash
-   snakemake --profile=$(pwd)/profile -s prep_fastq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-out --config filter_dag=false
-   snakemake --profile=$(pwd)/profile -s shareseq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-out --config filter_dag=false
+   snakemake --profile=$(pwd)/profile -s prep_fastq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-output --config filter_dag=false
+   snakemake --profile=$(pwd)/profile -s shareseq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-output --config filter_dag=false
    ```
    Note that this step is not needed if you remove all the `--notemp` flags from `run.sh` before running step 3. 
    Snakemake will delete the intermediate outputs by default as it runs without the `--notemp` flag.
@@ -108,8 +108,8 @@ Snakemake-based pipeline for processing SHARE-seq data
    ```
 7. (optional) To delete the intermediate outputs after a run, run the following:
    ```bash
-   snakemake --profile=$(pwd)/profile -s prep_fastq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-out --config filter_dag=false
-   snakemake --profile=$(pwd)/profile -s shareseq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-out --config filter_dag=false
+   snakemake --profile=$(pwd)/profile -s prep_fastq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-output --config filter_dag=false
+   snakemake --profile=$(pwd)/profile -s shareseq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-output --config filter_dag=false
    ```
    Note that this step is not needed if you remove all the `--notemp` flags from `run.sh` before running step 3.
    Snakemake will delete the intermediate outputs by default as it runs without the `--notemp` flag.
