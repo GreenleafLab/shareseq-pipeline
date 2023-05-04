@@ -61,7 +61,11 @@ plot_frag_tss_persublib <- function(input_path, output_path, genes, blacklist){
     atac_qc <- qc_scATAC(frags_raw, genes, blacklist)
     
     message("plotting qc plots")
-    p <- plot_fragment_length(frags_raw) + ggtitle(sample) + plot_tss_profile(frags_raw, genes) + plot_tss_scatter(atac_qc, min_frags=1000, min_tss=10)
+    atac_qc_PF <- atac_qc %>% filter(nFrags>1000 & TSSEnrichment>10)
+    median_nfrag <- median(atac_qc_PF$nFrags) %>% round()
+    median_tss <- median(atac_qc_PF$TSSEnrichment) %>% round(digits=1)
+    p <- plot_fragment_length(frags_raw) + ggtitle(paste0(sample, "\nmed nfrag: ", median_nfrag, "\nmed tss: ", median_tss)) +
+      plot_tss_profile(frags_raw, genes) + plot_tss_scatter(atac_qc, min_frags=1000, min_tss=10)
     print(p)
   }
   invisible(dev.off())
@@ -93,7 +97,11 @@ plot_frag_tss_persample <- function(input_path, output_path, genes, blacklist){
     atac_qc <- qc_scATAC(frags_raw, genes, blacklist)
     
     message("plotting qc plots")
-    p <- plot_fragment_length(frags_raw) + ggtitle(sample) + plot_tss_profile(frags_raw, genes) + plot_tss_scatter(atac_qc, min_frags=1000, min_tss=10)
+    atac_qc_PF <- atac_qc %>% filter(nFrags>1000 & TSSEnrichment>10)
+    median_nfrag <- median(atac_qc_PF$nFrags) %>% round()
+    median_tss <- median(atac_qc_PF$TSSEnrichment) %>% round(digits=1)
+    p <- plot_fragment_length(frags_raw) + ggtitle(paste0(sample, "\nmed nfrag: ", median_nfrag, "\nmed tss: ", median_tss)) +
+      plot_tss_profile(frags_raw, genes) + plot_tss_scatter(atac_qc, min_frags=1000, min_tss=10)
     print(p)
   }
   invisible(dev.off())
