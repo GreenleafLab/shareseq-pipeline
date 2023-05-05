@@ -114,4 +114,4 @@ if (!dir.exists(output_path)){
 
 refs <- get_references(output_path, genome)
 plot_frag_tss_persublib(input_path, output_path, refs$genes, refs$blacklist)
-#plot_frag_tss_persample(input_path, output_path, refs$genes, refs$blacklist) # optional
+plot_frag_tss_persample(input_path, output_path, refs$genes, refs$blacklist) # optional

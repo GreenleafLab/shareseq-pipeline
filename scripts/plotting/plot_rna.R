@@ -159,6 +159,14 @@ plot_violin_umi_gene <- function(proj, output_path){
   ggsave(plot=p, file=paste0(output_path,"/rna_umi_gene_violin.pdf"), dpi=300, width=10, height=8)
 }
 
+plot_violin_umi_gene_persample <- function(proj, output_path){
+  median_tbl <- proj@meta.data %>% group_by(sample) %>%
+        summarise(median_umi=median(nCount_RNA), median_gene=median(nFeature_RNA), cells_passfilter=n())
+  p1 <- VlnPlot(proj, features = c("nCount_RNA","nFeature_RNA","percent.mt"), pt.size=0, group.by="sample", log=T)
+  p <- p1 / tableGrob(median_tbl, rows = NULL)
+  ggsave(plot=p, file=paste0(output_path,"/rna_umi_gene_violin_persample.pdf"), dpi=300, width=10, height=8)
+}
+
 
 plot_umap <- function(proj, output_path){
   proj <- NormalizeData(proj) %>% FindVariableFeatures(nfeatures=2000) %>% ScaleData %>% RunPCA %>% FindNeighbors(dims = 1:50) %>%
@@ -234,6 +242,7 @@ plot_knee_sample(proj, output_path)
 proj <- proj[,(proj$nCount_RNA>1000) & (proj$nFeature_RNA>500) & (proj$percent.mt<30)]
 
 plot_violin_umi_gene(proj, output_path)
+plot_violin_umi_gene_persample(proj, output_path)
 
 message("plotting umap")
 proj <- plot_umap(proj, output_path)
