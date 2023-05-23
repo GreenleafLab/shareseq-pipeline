@@ -24,7 +24,7 @@ while True:
 
     chromosome = read.reference_name
     start = prev_read.reference_start + 4
-    end = start + prev_read.template_length - 4
+    end = prev_read.reference_start + prev_read.template_length - 4
     cell_barcode = read.get_tag("CB")
     print(chromosome, start, end, cell_barcode, sep="\t")
     prev_read = next(input, None)
