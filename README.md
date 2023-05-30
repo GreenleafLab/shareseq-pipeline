@@ -140,7 +140,21 @@ In simple cases, you will have one experiment and one sequencing run. In this ca
 
 In complex cases where experiments are pooled onto different sets of sequencing runs, you may need to make one config file per sequencing run for `prep_fastq.smk` and one config file per experiment for `shareseq.smk`. The figure below illustrates an example where separate config files are created for `shareseq.smk`.
 
-![shareseq-vis](./shareseq-theory-of-operation-vis.jpg)
+![shareseq-vis](docs/shareseq-theory-of-operation-vis.jpg)
+
+## Note on Tn5 offset
+In ATAC-seq experiments, Tn5 transposase forms a homodimer with a 9-bp gap between the two Tn5 molecules, resulting in two insertions 9-bp apart on different DNA strands per accessible site. When sequencing the DNA fragments using paired-end sequencing, the start and end positions need to be adjusted based on the insertion offset of Tn5 to reflect the true center of the accessible site at the midpoint of the Tn5 dimer. 
+
+To account for the Tn5 offset, previous ATAC-seq studies used a +4/-5 offset approach where plus-stranded insertions are adjusted by +4 bp, and minus-stranded insertions by -5 bp. However, this actually results in a 1bp mismatch of the adjusted insertion sites between the two fragments sharing a single transposition event. This mismatch does not affect most downstream ATAC analysis that bins insertions on the hundreds of bp scale, but it does affect bp-sensitive analysis like TF footprinting and motif analysis.
+
+In this SHAREseq preprocessing pipeline, we have adopted the +4/-4 offset instead, which results in a consensus insertion site.
+
+Read more:
+- [UCSC reference](http://www.genome.ucsc.edu/FAQ/FAQformat.html#format1) and [UCSC blog](https://genome-blog.soe.ucsc.edu/blog/2016/12/12/the-ucsc-genome-browser-coordinate-counting-systems/) on bed format and the half-open convention
+- [10x reference](https://support.10xgenomics.com/single-cell-multiome-atac-gex/software/pipelines/latest/output/fragments) describing the bed format correctly but using an incorrect +4/-5 offset
+
+![tn5-offset-vis](docs/tn5_offset.jpg)
+
 
 ---
 
