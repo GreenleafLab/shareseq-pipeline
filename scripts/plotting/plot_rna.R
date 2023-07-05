@@ -224,13 +224,13 @@ message("reading data")
 proj <- read_data(input_path)
 #proj <- read_data(input_path, use.sublib=T) # use this if only want sublibrary level qc, no sample info
 
+if (!dir.exists(output_path)){
+  dir.create(output_path, recursive = TRUE, showWarnings = FALSE)
+}
+
 if (flag_saveobj == "T"){
   message("saving raw object")
   saveRDS(proj, file=paste0(output_path, "/RNA_proj_raw.rds"))
-}
-
-if (!dir.exists(output_path)){
-  dir.create(output_path, recursive = TRUE, showWarnings = FALSE)
 }
 
 message("plotting knee plots")
