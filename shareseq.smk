@@ -280,7 +280,7 @@ rule atac_split_samples:
     output:
         fragments = temp('ATAC/sublibraries/{sublibrary}/{sample}.tsv.zst'),
     params:
-        barcode_pattern = lambda w: f"\t{config['samples'][w.sample]}\\+",
+        barcode_pattern = lambda w: f"\t({config['samples'][w.sample]})\\+",
         sublibrary_id = lambda w: w.sublibrary
     threads: 4
     shell: "zstd -dc {input.fragments} | "
@@ -540,7 +540,7 @@ rule rna_unique_cells_sample:
     output:
         cells = 'RNA/samples/{sample}.barcodes.tsv.gz'
     params:
-        barcode_pattern = lambda w: f"_{config['samples'][w.sample]}\\+"
+        barcode_pattern = lambda w: f"_({config['samples'][w.sample]})\\+"
     shell: "gzip -dc {input.cells} | "
            "grep -E '{params.barcode_pattern}' | "
            "sort --unique | gzip > {output.cells}"
@@ -573,7 +573,7 @@ rule rna_mtx_chunk_sample:
         script = srcdir("scripts/shareseq/mtx_from_counts.py"),
         memory = "4G",
         sublibrary_id = lambda w: w.sublibrary,
-        barcode_pattern = lambda w: f"\t{config['samples'][w.sample]}\\+"
+        barcode_pattern = lambda w: f"\t({config['samples'][w.sample]})\\+"
     threads: 4
     shell: "zstd -dc {input.counts} | "
            "grep -E '{params.barcode_pattern}' | " # Filter to sample
