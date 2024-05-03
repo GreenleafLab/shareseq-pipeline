@@ -142,6 +142,9 @@ In complex cases where experiments are pooled onto different sets of sequencing 
 
 ![shareseq-vis](docs/shareseq-theory-of-operation-vis.jpg)
 
+## Overview of pipeline
+![pipeline-overview](docs/shareseq-pipeline.jpg)
+
 ## Note on Tn5 offset
 In ATAC-seq experiments, Tn5 transposase forms a homodimer with a 9-bp gap between the two Tn5 molecules, resulting in two insertions 9-bp apart on different DNA strands per accessible site. When sequencing the DNA fragments using paired-end sequencing, the start and end positions need to be adjusted based on the insertion offset of Tn5 to reflect the true center of the accessible site at the midpoint of the Tn5 dimer. 
 
