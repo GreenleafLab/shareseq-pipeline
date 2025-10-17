@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
 
         // Read + print R1
         write_record(R1_in, R1_out, "1:N:0:", index_buf);
-        write_record(R2_in, R2_out, "2:N:0", index_buf);
+        write_record(R2_in, R2_out, "2:N:0:", index_buf);
         
         if (index_buf[BUF_SIZE - 1] == '\0' || line_buf[BUF_SIZE - 1] == '\0') {
             fprintf(stderr, "ERROR: fastq line length > %d characters\n", BUF_SIZE-1);
