@@ -1,5 +1,4 @@
 #!/bin/bash
-ml biology bcl2fastq samtools
 set -euo pipefail
 
 # First argument: config file
