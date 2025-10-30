@@ -3,10 +3,14 @@ set -euo pipefail
 
 # First argument: config file
 configfile="$1"
-shift  # remove the first argument, leaving all extras in "$@"
+shift || true  # remove the first argument, safely even if none follow
 
-# Optional extra args (e.g. -n, --cores, --rerun-incomplete, etc.)
+# Optional extra args (e.g. -n, --cores, etc.)
 extra_args=("$@")
+# If none given, default to an empty array
+if [ ${#extra_args[@]} -eq 0 ]; then
+    extra_args=("")
+fi
 
 # If container given in config, run in container mode
 # Keep all temporary files for now
