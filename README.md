@@ -1,6 +1,9 @@
 # shareseq-pipeline
 Snakemake-based pipeline for processing SHARE-seq data 
 
+> [!NOTE]
+> This branch is dedicated to raw sequencing data anonymization (i.e. removing identifying genetic information from raw sequencing reads for sensitive data). It **is not synchronized with the main branch**.
+
 ## Features
 - Parallelize via cloud or academic HPC cluster  
     (See [profile/config.yaml](profile/config.yaml) for an example to submit via Stanford's Sherlock cluster)
@@ -175,6 +178,8 @@ Read more:
 - tabix
 - umi_tools
 - zstd
+- BAMboozle
+- seqkit
 
 Builtin unix tools:
 - awk

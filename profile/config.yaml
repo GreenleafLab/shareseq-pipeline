@@ -12,6 +12,7 @@ cluster:
     --parsable
     --no-requeue
 cluster-status: "slurm_status.py"
+cluster-cancel: "scancel"
 default-resources:
   - partition=wjg,sfgf,biochem,owners
   - mem_mb=8000

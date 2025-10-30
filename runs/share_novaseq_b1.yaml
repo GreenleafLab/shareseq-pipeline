@@ -11,6 +11,7 @@ genome:
   bowtie2: /oak/stanford/groups/wjg/bliu/resources/shareseq_references/hg38/bowtie2/hg38
   star: /oak/stanford/groups/wjg/bliu/resources/shareseq_references/hg38/star # this is for STAR 2.7+ 
   gene_annotation: /oak/stanford/groups/wjg/bliu/resources/shareseq_references/hg38/gencode.v41.annotation.filtered.gtf
+  fasta: /oak/stanford/groups/wjg/bliu/resources/shareseq_references/hg38/hg38.fa
 
 ## Uncomment the line below to run in a container
 # singularity: "/oak/stanford/groups/wjg/bliu/containers/shareseq_latest.sif"
