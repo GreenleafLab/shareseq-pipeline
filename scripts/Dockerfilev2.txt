@@ -1,0 +1,5 @@
+FROM bettybliu/shareseq:v1.3
+
+# ensure at least 4GB RAM when building the container
+RUN conda install -c bioconda -c conda-forge seqkit
+RUN pip install BAMboozle
