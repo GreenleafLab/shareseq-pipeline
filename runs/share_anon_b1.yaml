@@ -1,0 +1,66 @@
+## Example config for processing already-anonymized SHARE-seq FASTQs.
+## Run with: sbatch -p wjg,sfgf,biochem run_anon.sh runs/share_anon_b1.yaml
+##
+## Sample -> Round1 BC1 regex mappings should come from the dataset's published
+## sample metadata (the same regex used when the FASTQs were originally
+## demultiplexed per sample). All 96 Round1 barcodes must be covered exactly
+## once across the entries below.
+
+output_dir: "/path/to/output/folder/"
+
+## Uncomment these lines to do a trial run with only two small test chunks per sample
+# chunk_size: 2_000_000
+# test_chunks: 2
+chunk_size: 20_000_000
+
+## Check the genomes
+# importantly, make sure the STAR index is compatible with your STAR version
+genome:
+  bowtie2: /oak/stanford/groups/wjg/bliu/resources/shareseq_references/hg38/bowtie2/hg38
+  star: /oak/stanford/groups/wjg/bliu/resources/shareseq_references/hg38/star # this is for STAR 2.7+
+  gene_annotation: /oak/stanford/groups/wjg/bliu/resources/shareseq_references/hg38/gencode.v41.annotation.filtered.gtf
+  fasta: /oak/stanford/groups/wjg/bliu/resources/shareseq_references/hg38/hg38.fa
+
+## Uncomment the line below to run in a container
+# singularity: "/oak/stanford/groups/wjg/bliu/containers/shareseq_latest.sif"
+
+## Regular expressions for 1st round barcodes that should be mapped to each sample
+# Must cover all 1st round barcodes, can use resources like regex101.com to check syntax
+# (use a dummy Undetermined sample if some 1st round barcodes are unused)
+samples:
+  sample1_b1: "A[0-9][0-9]"
+  sample2_b1: "B[0-9][0-9]"
+  sample3_b1: "C[0-9][0-9]"
+  sample4_b1: "D[0-9][0-9]"
+  sample5_b1: "E[0-9][0-9]"
+  sample6_b1: "F[0-9][0-9]"
+  sample7_b1: "G[0-9][0-9]"
+  sample8_b1: "H[0-9][0-9]"
+
+sequencing:
+  b1_anon:
+    type: anonymized
+    # Directory containing the anonymized FASTQs. Expected filenames:
+    #   {ATAC|RNA}_{SampleID}_anon_{R1|R2}.fastq.gz                  (single file)
+    #   {ATAC|RNA}_{SampleID}_anon_{R1|R2}.part_NNN.fastq.gz         (SRA-chunked)
+    data_dir: /path/to/anon_fastq_dir/
+    # List only the samples whose FASTQs are actually present in data_dir.
+    # Leave a list empty (e.g. RNA_samples: []) if that modality isn't available.
+    ATAC_samples:
+      - sample1_b1
+      - sample2_b1
+      - sample3_b1
+      - sample4_b1
+      - sample5_b1
+      - sample6_b1
+      - sample7_b1
+      - sample8_b1
+    RNA_samples:
+      - sample1_b1
+      - sample2_b1
+      - sample3_b1
+      - sample4_b1
+      - sample5_b1
+      - sample6_b1
+      - sample7_b1
+      - sample8_b1

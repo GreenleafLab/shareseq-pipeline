@@ -1,0 +1,8 @@
+data
+output
+AGENTS.md
+PLAN.md
+# Per-batch run configs are user/dataset-specific; only track the generic template.
+runs/share_anon_b*.yaml
+!runs/share_anon_b1.yaml
+.snakemake

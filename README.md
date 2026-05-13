@@ -117,6 +117,44 @@ Snakemake-based pipeline for processing SHARE-seq data
    Note that this step is not needed if you remove all the `--notemp` flags from `run.sh` before running step 3.
    Snakemake will delete the intermediate outputs by default as it runs without the `--notemp` flag.
 
+## Running on anonymized SRA FASTQs
+
+If you have downloaded the anonymized SHARE-seq FASTQs from SRA, you can process
+them directly into per-sample fragments and matrices via `ingest_anonymized.smk`
++ `shareseq.smk` (bypassing `prep_fastq.smk` / `bcl2fastq` / `anonymize.smk`).
+These FASTQs already carry the SHARE-seq `1:N:0:[I1]+[I2]` indices in their
+read headers, so all that's needed is per-sample read counting + (optional)
+concatenation of any SRA-chunked parts.
+
+1. Place the FASTQs in `data/raw/` with the following naming:
+   - Single file: `{ATAC|RNA}_{SampleID}_anon_{R1|R2}.fastq.gz`
+   - SRA-chunked: `{ATAC|RNA}_{SampleID}_anon_{R1|R2}.part_NNN.fastq.gz`
+2. Copy [runs/share_anon_b1.yaml](runs/share_anon_b1.yaml) to a new per-batch
+   YAML (e.g. `runs/share_anon_b{N}.yaml`). Edit it to:
+   - Populate `samples:` with each sample's Round1 BC1 regex (as published with
+     the dataset). All 96 Round1 barcodes must be covered exactly once across
+     the entries — see [shareseq.smk:69-72](shareseq.smk#L69-L72).
+   - Under `sequencing.<run>.{ATAC,RNA}_samples`, list **only** the SampleIDs
+     whose FASTQs are present in `data/raw/`. Leave the other list empty if
+     that modality isn't available yet.
+3. For a first test run, set:
+    ```yaml
+    chunk_size: 2_000_000
+    test_chunks: 2
+    ```
+4. From within the `shareseq-pipeline` directory, run:
+    ```bash
+    sbatch -p wjg,sfgf,biochem run_anon.sh runs/share_anon_b{N}.yaml
+    ```
+    Set the `-p` argument to your partition names.
+5. After the test succeeds, remove the two test lines (use the default
+   `chunk_size: 20_000_000` and no `test_chunks`) and re-run for a full pass.
+
+Outputs match the standard `shareseq.smk` outputs (fragments / matrices under
+`{ATAC,RNA}/samples/`). The only intermediate produced by the ingest step is
+`staged_fastq/{assay}/samples/{SampleID}_{read}.fastq.zst` (one .zst per
+sample/read, concatenated from any `.part_*.fastq.gz` inputs).
+
 ---
 
 ## Theory of operation

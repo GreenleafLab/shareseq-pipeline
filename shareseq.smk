@@ -284,7 +284,7 @@ rule atac_split_samples:
         sublibrary_id = lambda w: w.sublibrary
     threads: 4
     shell: "zstd -dc {input.fragments} | "
-           "grep -E '{params.barcode_pattern}' | "
+           "{{ grep -E '{params.barcode_pattern}' || true; }} | " # Tolerate no matches for sublibraries that don't contain this sample (e.g. anonymized SRA inputs)
            "awk -c 'BEGIN {{OFS=\"\t\"}} {{$4=(\"{params.sublibrary_id}_\" $4); print $0}}' | " # Prefix sublibrary ID
            "zstd --fast=1 -q -o {output.fragments} "
 
@@ -542,7 +542,7 @@ rule rna_unique_cells_sample:
     params:
         barcode_pattern = lambda w: f"_({config['samples'][w.sample]})\\+"
     shell: "gzip -dc {input.cells} | "
-           "grep -E '{params.barcode_pattern}' | "
+           "{{ grep -E '{params.barcode_pattern}' || true; }} | " # Tolerate no matches (anonymized inputs: each sublibrary contains only one sample)
            "sort --unique | gzip > {output.cells}"
         
 # mtx values -- collate per-sublibrary and per-sample
@@ -576,7 +576,7 @@ rule rna_mtx_chunk_sample:
         barcode_pattern = lambda w: f"\t({config['samples'][w.sample]})\\+"
     threads: 4
     shell: "zstd -dc {input.counts} | "
-           "grep -E '{params.barcode_pattern}' | " # Filter to sample
+           "{{ grep -E '{params.barcode_pattern}' || true; }} | " # Filter to sample; tolerate no matches (anonymized inputs)
            "awk -c 'BEGIN {{OFS=\"\t\"}} {{$2=(\"{params.sublibrary_id}_\" $2); print $0;}}' | " # Prepend sublibrary ID
            "python {params.script} {input.features} {input.barcodes} | "
            "LC_ALL=C sort -k2,2n -k1,1n -t$'\\t' -S {params.memory} --parallel=2 | "
