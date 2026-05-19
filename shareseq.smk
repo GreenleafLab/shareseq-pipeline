@@ -183,7 +183,7 @@ rule match_barcodes:
 # Remove adapter ends from the raw fastq reads.
 # Discards reads that result in <15bp (--length_required=15 by default)
 rule atac_trim_adapters:
-    input: 
+    input:
         R1 = rules.match_barcodes.output.R1,
         R2 = rules.match_barcodes.output.R2,
     output:
@@ -192,12 +192,28 @@ rule atac_trim_adapters:
         report_html = "{sequencing_path}/{chunk}/qc_stats/02_trim_adapters.html",
     threads: 4
     log: '{sequencing_path}/{chunk}/02_trim_adapters.log'
-    shell: "fastp --in1 <(zstd -dc {input.R1}) --in2 <(zstd -dc {input.R2}) "
-        " --adapter_sequence    CTGTCTCTTATACACATCTCCGAGCCCACGAGAC "
-        " --adapter_sequence_r2 CTGTCTCTTATACACATCTGACGCTGCCGACGA "
-        " -j {output.report_json} -h {output.report_html} "
-        " -G -Q -w {threads} 2> {log} "
-        " --stdout | zstd --fast=1 -q -o {output.interleaved}"
+    # fastp 0.23.2 reads R1 and R2 with parallel worker threads. When the
+    # inputs come from bash process substitution (named pipes), the workers can
+    # desync their pack reader and emit a scrambled interleaved stream where
+    # R1 and R2 are not paired -- visible as "WARNNIG: different read numbers
+    # of the N pack" in the log and bowtie2 reporting ~100% non-concordant
+    # alignment. Decompressing to regular seekable files first removes the
+    # race. Reproducer: ATAC/b10_sra/CL72 (process-anonymize branch, b10 SRA).
+    shell:
+        """
+        tmpbase="${{L_SCRATCH:-${{TMPDIR:-/tmp}}}}"
+        tmpdir=$(mktemp -d -p "$tmpbase" fastp.XXXXXX)
+        trap 'rm -rf "$tmpdir"' EXIT
+        zstd -dc {input.R1} > "$tmpdir/R1.fastq" &
+        zstd -dc {input.R2} > "$tmpdir/R2.fastq" &
+        wait
+        fastp --in1 "$tmpdir/R1.fastq" --in2 "$tmpdir/R2.fastq" \
+            --adapter_sequence    CTGTCTCTTATACACATCTCCGAGCCCACGAGAC \
+            --adapter_sequence_r2 CTGTCTCTTATACACATCTGACGCTGCCGACGA \
+            -j {output.report_json} -h {output.report_html} \
+            -G -Q -w {threads} 2> {log} \
+            --stdout | zstd --fast=1 -q -o {output.interleaved}
+        """
 
 # Alternative trim command
 # "SeqPurge -a1 CTGTCTCTTATACACATCTCCGAGCCCACGAGAC -a2 CTGTCTCTTATACACATCTGACGCTGCCGACGA "

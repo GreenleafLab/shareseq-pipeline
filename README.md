@@ -2,205 +2,84 @@
 Snakemake-based pipeline for processing SHARE-seq data 
 
 > [!NOTE]
-> This branch is dedicated to raw sequencing data anonymization (i.e. removing identifying genetic information from raw sequencing reads for sensitive data). It **is not synchronized with the main branch**.
+> This branch is dedicated to processing anonymized raw sequence data as produced by the `anonymize` branch. It **is not synchronized with the main branch**.
 
-## Features
-- Parallelize via cloud or academic HPC cluster  
-    (See [profile/config.yaml](profile/config.yaml) for an example to submit via Stanford's Sherlock cluster)
-    - Processes a Novaseq run in under 4 hours in our tests on Sherlock
-- Resume cleanly after interruptions
-- Demultiplex individual samples barcoded using first round cell barcode
-- Merge sequencing data from multiple sequencing runs of the same experiment
-- Can be run in a pre-built [container](https://hub.docker.com/r/bettybliu/shareseq)
-    - [Dockerfile](scripts/Dockerfile) provided for users to build custom containers if needed 
 
-## Getting started
+## Processing anonymized SHARE-seq data from SRA
+
+This branch processes already-anonymized SHARE-seq FASTQs into per-sample
+fragments and matrices, with optional SRA download as the first stage. The
+pipeline runs `prep_sra.smk` → `ingest_anonymized.smk` → `shareseq.smk`,
+bypassing `bcl2fastq` and the demultiplexing/anonymization stages on `main`.
+We use data from HDMA (Liu et al, Nature, 2026 as an exampl).
+
 ### Inputs
-- Raw sequencing data as one or more bcl sequencing directories
-    - In the future, fastq inputs will be supported
-- Genome annotations:
-    - bowtie2 and STAR genome indexes
-    - gtf gene annotation
-    - (optional) We provide a script to automatically download, filter and build genome indices (currently hg38 support only)
-      ```bash
-      cd scripts/references
-      bash prep_genome.sh hg38
-      ```
-- A config yaml file ([example](runs/share_novaseq_b1.yaml))
+- SRR accessions for the anonymized FASTQs (or the FASTQs already on disk)
+- Genome references: bowtie2 + STAR indexes, GTF annotation, FASTA. Use
+  `bash scripts/references/prep_genome.sh hg38` to build these if needed.
+- A per-batch config YAML — see [runs/share_sra_demo.yaml](runs/share_sra_demo.yaml).
 
-### Outputs
-- ATAC fragment file (10x compatible)
-    - `ATAC/samples/{sample}.fragments.tsv.gz`
-- RNA mtx file (10x compatible)
-    - `RNA/samples/{sample}.matrix.mtx.gz`
-    - `RNA/samples/{sample}.barcodes.tsv.gz`
-    - `RNA/samples/{sample}.features.tsv.gz`
-- Secondary outputs:
-    - Stats on alignment rates
-        - `ATAC/samples/alignment_stats.json`
-        - `RNA/samples/alignment_stats.json`
-    - Stats on barcode matching rates
-        - `ATAC/samples/barcode_stats.json`
-        - `RNA/samples/barcode_stats.json`
-    - Per-sublibrary fragment and matrix files:
-        - `ATAC/sublibraries/{sublibrary}/fragments.tsv.gz`
-        - `RNA/sublibraries/{sublibrary}/matrix.mtx.gz`
+### Outputs (per sample, under `output_dir`)
+- ATAC fragments: `ATAC/samples/{sample}.fragments.tsv.gz`
+- RNA matrix:     `RNA/samples/{sample}.{matrix.mtx,barcodes.tsv,features.tsv}.gz`
+- QC stats:       `{ATAC,RNA}/samples/{alignment,barcode}_stats.json`
+- Per-sublibrary fragments/matrices under `{ATAC,RNA}/sublibraries/`.
 
-## Running on Sherlock
+### Running on Sherlock
 
-0. Install required dependencies (see below)
-1. Adapt the [example](runs/share_novaseq_b1.yaml) config to your input + output data locations
-2. At the top level your config, set:
-    ```yaml
-    chunk_size: 2_000_000
-    test_chunks: 2
-    ```
-3. From within the `shareseq-pipeline` directory, run:
-   ```bash
-   sbatch -p wjg,sfgf,biochem run.sh runs/MY_CONFIG_FILE.yaml
-   ```
-   Set the `-p` argument to your partition names, and set the path to your config file
-   appropriately.
-4. After that runs successfully, delete the test outputs and do a full-scale run by 
-   setting a larger chunk size and removing `test_chunks` from the config.
+This section explains how to run the process on Stanford's Sherlock HPC; it 
+can be adapted for other settings.
+
+> [!NOTE]
+> For general Sherlock setup (dependencies, profile config, containerized
+> runs, building genome references), see the `main` branch
+> [README](https://github.com/GreenleafLab/shareseq-pipeline/blob/main/README.md).
+> The steps below cover only what's specific to the anonymized + SRA workflow.
+
+1. Load conda environment and modules (e.g. sra-toolkit).
+
+2. Copy [runs/share_sra_demo.yaml](runs/share_sra_demo.yaml) to a new
+   `runs/MY_CONFIG.yaml` and edit:
+   - `output_dir` — pipeline working directory
+   - `samples` — Round1 BC1 regex per sample (must cover all 96 barcodes
+     exactly once across entries; see [shareseq.smk:69-72](shareseq.smk#L69-L72))
+   - `sequencing.<run>.data_dir` — where SRA fetches will land
+   - `sequencing.<run>.{ATAC,RNA}_sra` — `{sample: SRR}` for samples to
+     fetch from SRA (omit for samples already in `data_dir`)
+   - `sequencing.<run>.{ATAC,RNA}_samples` — every sample to process
+
+  `runs/share_sra_demo.yaml` is an example for downloading and processing ATAC and RNA runs
+  for one sample from one batch in the Human Development Multiomic Atlas (HDMA).
+
+3. Do a small test run with truncated inputs:
    ```yaml
-   chunk_size: 20_000_000
+   chunk_size: 2_000_000
+   test_chunks: 2
    ```
-5. After the run has completed, generate summary plots by running the following 
-   from within the `shareseq-pipeline` directory:
    ```bash
-   sbatch -p wjg,sfgf,biochem --mem-per-cpu=64g plot.sh runs/MY_CONFIG_FILE.yaml
-   ``` 
-6. (optional) To delete the intermediate outputs after a run, run the following:
-   ```bash
-   snakemake --profile=$(pwd)/profile -s prep_fastq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-output --config filter_dag=false
-   snakemake --profile=$(pwd)/profile -s shareseq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-output --config filter_dag=false
+   sbatch -p wjg,sfgf,biochem run_process_anonymize.sh runs/MY_CONFIG.yaml
    ```
-   Note that this step is not needed if you remove all the `--notemp` flags from `run.sh` before running step 3. 
-   Snakemake will delete the intermediate outputs by default as it runs without the `--notemp` flag.
-   
-## Running on Sherlock with container
 
-0. Install `singularity` and `snakemake` 
-1. Build the container image file by running:
-   ```
-   singularity pull /YOUR/CONTAINERS/DIR/shareseq_latest.sif docker://bettybliu/shareseq:latest
-   ```
-2. Adapt the [example](runs/share_novaseq_b1.yaml) config to your input + output data locations,
-   uncomment the singularity line and modify it to `singularity: "/YOUR/CONTAINERS/DIR/shareseq_latest.sif"`
-3. At the top level your config, set:
-    ```yaml
-    chunk_size: 2_000_000
-    test_chunks: 2
-    ```
-4. From within the `shareseq-pipeline` directory, run:
-   ```bash
-   sbatch -p wjg,sfgf,biochem run.sh runs/MY_CONFIG_FILE.yaml
-   ```
-   Set the `-p` argument to your partition names, and set the path to your config file
-   appropriately.
-5. After that runs successfully, delete the test outputs and do a full-scale run by
-   setting a larger chunk size and removing `test_chunks` from the config.
-   ```yaml
-   chunk_size: 20_000_000
-   ```
-6. After the run has completed, generate summary plots by running the following
-   from within the `shareseq-pipeline` directory:
-   ```bash
-   sbatch -p wjg,sfgf,biochem --mem-per-cpu=64g --job-name=plot --wrap "singularity exec --cleanenv /YOUR/CONTAINERS/DIR/shareseq_latest.sif ./plot.sh runs/MY_CONFIG_FILE.yaml"
-   ```
-7. (optional) To delete the intermediate outputs after a run, run the following:
-   ```bash
-   snakemake --profile=$(pwd)/profile -s prep_fastq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-output --config filter_dag=false
-   snakemake --profile=$(pwd)/profile -s shareseq.smk --configfile runs/MY_CONFIG_FILE.yaml --delete-temp-output --config filter_dag=false
-   ```
-   Note that this step is not needed if you remove all the `--notemp` flags from `run.sh` before running step 3.
-   Snakemake will delete the intermediate outputs by default as it runs without the `--notemp` flag.
+4. Full pass: remove `test_chunks` and use `chunk_size: 20_000_000`, then
+   re-run the same `sbatch` command.
 
-## Running on anonymized SRA FASTQs
+`run_process_anonymize.sh` will skip the SRA stage when no `*_sra`
+keys are declared, so it also works for FASTQs that are already present locally
+(named `{ATAC|RNA}_{SampleID}_anon_{R1|R2}.fastq.gz` in `data_dir`).
 
-If you have downloaded the anonymized SHARE-seq FASTQs from SRA, you can process
-them directly into per-sample fragments and matrices via `ingest_anonymized.smk`
-+ `shareseq.smk` (bypassing `prep_fastq.smk` / `bcl2fastq` / `anonymize.smk`).
-These FASTQs already carry the SHARE-seq `1:N:0:[I1]+[I2]` indices in their
-read headers, so all that's needed is per-sample read counting + (optional)
-concatenation of any SRA-chunked parts.
+**Cleanup of intermediates** (optional — only needed if `run_process_anonymize.sh`
+was run with `--notemp`):
+```bash
+snakemake --profile=$(pwd)/profile -s ingest_anonymized.smk --configfile runs/MY_CONFIG.yaml --delete-temp-output --config filter_dag=false
+snakemake --profile=$(pwd)/profile -s shareseq.smk          --configfile runs/MY_CONFIG.yaml --delete-temp-output --config filter_dag=false
+```
 
-1. Place the FASTQs in `data/raw/` with the following naming:
-   - Single file: `{ATAC|RNA}_{SampleID}_anon_{R1|R2}.fastq.gz`
-   - SRA-chunked: `{ATAC|RNA}_{SampleID}_anon_{R1|R2}.part_NNN.fastq.gz`
-2. Copy [runs/share_anon_b1.yaml](runs/share_anon_b1.yaml) to a new per-batch
-   YAML (e.g. `runs/share_anon_b{N}.yaml`). Edit it to:
-   - Populate `samples:` with each sample's Round1 BC1 regex (as published with
-     the dataset). All 96 Round1 barcodes must be covered exactly once across
-     the entries — see [shareseq.smk:69-72](shareseq.smk#L69-L72).
-   - Under `sequencing.<run>.{ATAC,RNA}_samples`, list **only** the SampleIDs
-     whose FASTQs are present in `data/raw/`. Leave the other list empty if
-     that modality isn't available yet.
-3. For a first test run, set:
-    ```yaml
-    chunk_size: 2_000_000
-    test_chunks: 2
-    ```
-4. From within the `shareseq-pipeline` directory, run:
-    ```bash
-    sbatch -p wjg,sfgf,biochem run_anon.sh runs/share_anon_b{N}.yaml
-    ```
-    Set the `-p` argument to your partition names.
-5. After the test succeeds, remove the two test lines (use the default
-   `chunk_size: 20_000_000` and no `test_chunks`) and re-run for a full pass.
-
-Outputs match the standard `shareseq.smk` outputs (fragments / matrices under
-`{ATAC,RNA}/samples/`). The only intermediate produced by the ingest step is
-`staged_fastq/{assay}/samples/{SampleID}_{read}.fastq.zst` (one .zst per
-sample/read, concatenated from any `.part_*.fastq.gz` inputs).
+**Containerized runs:** uncomment the `singularity:` line in the config
+(pointing to a `shareseq_latest.sif` built from
+`docker://bettybliu/shareseq:latest`); the wrapper picks it up automatically.
 
 ---
 
-## Theory of operation
-
-The pipeline runs in two steps:
-- `prep_fastq.smk` counts the number of reads, and runs bcl2fastq as needed
-- `shareseq.smk` runs the actual analysis
-
-Model of experiment:
-- ***experiments*** consist of a run where a group of cells were physically present together and barcoded in the same set of plates.
-    - `shareseq.smk` should be run once per split-and-pool ***experiment***
-- ***samples*** are distinct biosamples or biological/technical replicates
-    - ***samples*** are distinguished by being placed in distinct sets of wells during the first round of split+pool barcoding. 
-    - Each ***experiment*** may have one or more ***samples***
-- ***sublibraries*** are subsets of cells split after the final round of split+pool but prior to reversing crosslinking. 
-    - If the same cell barcode is found in multiple sublibraries, the reads are assumed to have arisen from distinct cells. 
-    - Each ***experiment*** may have one or more ***sublibraries***
-    - Each ***sublibrary*** contains cells uniformly distributed from all the ***samples***. 
-    - ***sublibraries*** can be pooled for sequencing, but each can be demultiplexed based on unique sequencing adapters (one adapter for ATAC and one adapter for RNA)
-- ***sequencing runs*** can contain the ATAC and/or RNA reads for one or more ***sublibraries*** 
-    - `prep_fastq.smk` should be run once per ***sequencing run*** 
-
-In simple cases, you will have one experiment and one sequencing run. In this case a single config file is sufficient for both `prep_fastq.smk` and `shareseq.smk`.
-
-In complex cases where experiments are pooled onto different sets of sequencing runs, you may need to make one config file per sequencing run for `prep_fastq.smk` and one config file per experiment for `shareseq.smk`. The figure below illustrates an example where separate config files are created for `shareseq.smk`.
-
-![shareseq-vis](docs/shareseq-theory-of-operation-vis.jpg)
-
-## Overview of pipeline
-![pipeline-overview](docs/shareseq-pipeline.jpg)
-
-## Note on Tn5 offset
-In ATAC-seq experiments, Tn5 transposase forms a homodimer with a 9-bp gap between the two Tn5 molecules, resulting in two insertions 9-bp apart on different DNA strands per accessible site. When sequencing the DNA fragments using paired-end sequencing, the start and end positions need to be adjusted based on the insertion offset of Tn5 to reflect the true center of the accessible site at the midpoint of the Tn5 dimer. 
-
-To account for the Tn5 offset, previous ATAC-seq studies used a +4/-5 offset approach where plus-stranded insertions are adjusted by +4 bp, and minus-stranded insertions by -5 bp. However, this actually results in a 1bp mismatch of the adjusted insertion sites between the two fragments sharing a single transposition event. This mismatch does not affect most downstream ATAC analysis that bins insertions on the hundreds of bp scale, but it does affect bp-sensitive analysis like TF footprinting and motif analysis.
-
-In this SHAREseq preprocessing pipeline, we have adopted the +4/-4 offset instead, which results in a consensus insertion site.
-
-Read more:
-- [UCSC reference](http://www.genome.ucsc.edu/FAQ/FAQformat.html#format1) and [UCSC blog](https://genome-blog.soe.ucsc.edu/blog/2016/12/12/the-ucsc-genome-browser-coordinate-counting-systems/) on bed format and the half-open convention
-- [10x reference](https://support.10xgenomics.com/single-cell-multiome-atac-gex/software/pipelines/latest/output/fragments) describing the bed format correctly but using an incorrect +4/-5 offset
-
-![tn5-offset-vis](docs/tn5_offset.jpg)
-
-
----
 
 ## Required dependencies
 - bcl2fastq
@@ -213,6 +92,7 @@ Read more:
 - STAR
 - samtools
 - snakemake
+- sra-tools (`prefetch`, `fastq-dump`) — only needed if running `prep_sra.smk`
 - tabix
 - umi_tools
 - zstd

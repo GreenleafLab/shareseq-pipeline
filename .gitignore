@@ -6,3 +6,14 @@ PLAN.md
 runs/share_anon_b*.yaml
 !runs/share_anon_b1.yaml
 .snakemake
+download*.sh
+slurm*
+ATAC
+RNA
+bin
+*/*/__pycache__
+*/*/__pycache__/
+*/*/.ipynb_checkpoints/
+*/*/.ipynb_checkpoints
+staged_fastq/
+share_sra.yaml

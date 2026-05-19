@@ -25,9 +25,13 @@ def string_only_keys(data):
 def get_sequencing_paths(assay, config, run_types=["bcl", "anonymized"], sublib=None):
     """Get a list of all paths for sublibraries for the current assay.
 
-    For type "bcl" runs, returns paths of the form "{assay}/{run_id}/{sublib_id}".
-    For type "anonymized" runs (already-demuxed-per-sample SRA inputs), returns
-    "{assay}/samples/{sample_id}" — each SampleID is treated as its own sublibrary.
+    For both "bcl" and "anonymized" run types, returns paths of the form
+    "{assay}/{run_id}/{sublib_id}". For "anonymized" runs the sublibraries
+    are taken from run["sublibraries"][assay], a {sublib_id: I2_sequence} map
+    that ingest_anonymized.smk uses to split-by-I2 the merged per-sample SRA
+    upload back into per-sublibrary FASTQs. The shared path scheme means
+    shareseq.smk treats anon and bcl sublibraries identically and downstream
+    cell barcodes inherit the original CL{N}_ prefix.
     """
     assert assay in ["ATAC", "RNA"]
     sequencing_paths = []
@@ -40,19 +44,18 @@ def get_sequencing_paths(assay, config, run_types=["bcl", "anonymized"], sublib=
                     f"{assay}/{run_id}/{sublib_id}" for sublib_id in run[f"{assay}_I2"] if sublib_id in whitelist
                 ]
         elif run["type"] == "anonymized" and "anonymized" in run_types:
-            if (f"{assay}_samples" in run.keys()) and run[f"{assay}_samples"]:
-                whitelist = run[f"{assay}_samples"] if not sublib else [sublib]
+            sublibs = (run.get("sublibraries") or {}).get(assay) or {}
+            if sublibs:
+                whitelist = sublibs if not sublib else [sublib]
                 sequencing_paths += [
-                    f"{assay}/samples/{sample_id}" for sample_id in run[f"{assay}_samples"] if sample_id in whitelist
+                    f"{assay}/{run_id}/{sublib_id}" for sublib_id in sublibs if sublib_id in whitelist
                 ]
     return sequencing_paths
 
 def get_sublibraries(assay, config, run_types=["bcl", "anonymized"]):
     """Get a list of all unique sublibraries for the current assay.
 
-    For type "anonymized" runs, each SampleID listed in {assay}_samples is
-    treated as a sublibrary so downstream sublibrary-level rules in
-    shareseq.smk operate per sample.
+    For "anonymized" runs the sublibraries come from run["sublibraries"][assay].
     """
     assert assay in ["ATAC", "RNA"]
     sublibraries = []
@@ -64,10 +67,8 @@ def get_sublibraries(assay, config, run_types=["bcl", "anonymized"]):
                     sublib_id for sublib_id in run[f"{assay}_I2"]
                 ]
         elif run["type"] == "anonymized" and "anonymized" in run_types:
-            if (f"{assay}_samples" in run.keys()) and run[f"{assay}_samples"]:
-                sublibraries += [
-                    sample_id for sample_id in run[f"{assay}_samples"]
-                ]
+            sublibs = (run.get("sublibraries") or {}).get(assay) or {}
+            sublibraries += list(sublibs.keys())
     return list(set(sublibraries))
 
 def fastq_path(sequencing_path, read, config):
@@ -77,20 +78,20 @@ def fastq_path(sequencing_path, read, config):
     inputs land in staged_fastq/ (produced by ingest_anonymized.smk).
     """
     parts = sequencing_path.split("/")
-    if parts[1] == "samples":
-        return f"staged_fastq/{sequencing_path}_{read}.fastq.zst"
     run_id = parts[1]
-    if config["sequencing"][run_id]["type"] == "bcl":
+    rtype = config["sequencing"][run_id]["type"]
+    if rtype == "bcl":
         return f"bcl2fastq/{sequencing_path}_{read}.fastq.zst"
+    if rtype == "anonymized":
+        return f"staged_fastq/{sequencing_path}_{read}.fastq.zst"
     assert False
 
 def fastq_decompress(sequencing_path, config):
     """Take a sublibrary path and return the command to decompress it"""
     parts = sequencing_path.split("/")
-    if parts[1] == "samples":
-        return "zstd -dc"
     run_id = parts[1]
-    if config["sequencing"][run_id]["type"] == "bcl":
+    rtype = config["sequencing"][run_id]["type"]
+    if rtype in ("bcl", "anonymized"):
         return "zstd -dc"
     assert False
 
